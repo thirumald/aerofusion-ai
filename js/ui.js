@@ -152,7 +152,7 @@
   }
 
   window.addEventListener('hashchange', route);
-  window.addEventListener('DOMContentLoaded', () => {
+  function init() {
     clock(); setInterval(clock, 1000);
     AF.updateBadges();
     const live = $('#live');
@@ -166,5 +166,6 @@
     $('#nav-toggle').addEventListener('click', () => $('.side').classList.toggle('open'));
     $$('.nav a').forEach((a) => a.addEventListener('click', () => $('.side').classList.remove('open')));
     route(); scheduleLive();
-  });
+  }
+  if (document.readyState === 'loading') window.addEventListener('DOMContentLoaded', init); else init();
 })();
