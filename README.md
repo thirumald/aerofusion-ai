@@ -24,10 +24,12 @@ It also deploys as-is to GitHub Pages (see `.github/workflows/pages.yml`).
 | Page | Use case |
 | --- | --- |
 | Geo view | Map-first situational awareness: airport map with risk heat, cameras, alert clusters and officers, severity chips, layers, search, zoom/pan, a zone/camera detail panel with AI advisory, an airport score card and the AskAero assistant |
-| Digital twin | Isometric 3D airport with animated vehicles, aircraft and people; overlays for security risk, occupancy, HVAC and energy; ranked systems panel and predictive advisories |
+| Digital twin | Isometric 3D airport with animated vehicles and aircraft, camera field-of-view cones, live anonymous tokens with risk trails; overlays for security risk, occupancy, HVAC and energy; ranked systems panel and predictive advisories |
 | Baggage | Custody events, lane volumes and a per-bag custody chain from kerb to gate |
 | Passenger flow | Arrivals vs forecast, crowd density, wait-time heatmap by lane and recommendations |
 | Landside traffic | Kerb occupancy, car parks, vehicle dwell events and the kerb camera |
+| Predictive maintenance | Asset health ranking, condition signals, 14-day failure probability and a work-order action |
+| Incident dashboard | Response KPIs, severity trend, incidents by type, live SLA countdowns, workflow funnel, response by officer |
 | Command center | KPIs, facility risk map with live zone risk, active alerts, mini camera wall |
 | Live cameras | Six simulated CCTV feeds, each scripted to show one use case, with event log and tracked entities |
 | Checkpoint | Feature 1: CT alert instantly resolves to the owning passenger (person-to-bag correlation) |
@@ -65,6 +67,7 @@ js/pages-intel.js     fusion, tracking, incidents, alerts, routing, governance
 js/pages-geo.js       geo view, score card, zone panel, AskAero assistant
 js/pages-twin.js      isometric digital twin
 js/pages-domain.js    baggage, passenger flow and landside dashboards
+js/pages-asset.js     incident dashboard and predictive maintenance
 ```
 
 To add a scenario, add an entry to `SCEN` in `js/sim.js` (props, actors with timed paths, bags with carry/at/move

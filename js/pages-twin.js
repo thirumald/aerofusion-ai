@@ -28,10 +28,12 @@
 
   AF.pages.twin = function (view, arg, ctx) {
     view.classList.add('geo');
-    const S = { mod: 'risk', scope: 'all', sel: null, hover: null };
+    const S = { mod: 'risk', scope: 'all', sel: null, hover: null, tokHover: null, layers: { fov: true, tokens: true, trails: true } };
     view.innerHTML = `<div class="twin">
       <aside class="tmods"><div class="tm-h">MODULES</div>
         <div class="tm-g">TERMINAL OPERATIONS</div>${Object.entries(MODS).map(([k, m]) => `<button class="tm ${k === 'risk' ? 'on' : ''}" data-m="${k}">${m.name}</button>`).join('')}
+        <div class="tm-g">LAYERS</div>
+        <label class="tm lay"><input type="checkbox" data-l="fov" checked> Camera field of view</label><label class="tm lay"><input type="checkbox" data-l="tokens" checked> Live tokens</label><label class="tm lay"><input type="checkbox" data-l="trails" checked> Risk trails</label>
         <div class="tm-g">DOMAIN DASHBOARDS</div><a class="tm" href="#/baggage">Baggage handling ›</a><a class="tm" href="#/passengers">Passenger flow ›</a><a class="tm" href="#/landside">Landside traffic ›</a>
         <div class="tm-g">RELATED</div><a class="tm" href="#/geo">Geo view ›</a><a class="tm" href="#/alerts">Alerts and dispatch ›</a></aside>
       <div class="tcenter"><div class="ttabs" role="tablist"><button class="on" data-s="all">AIRPORT</button><button data-s="term">TERMINAL</button><button data-s="air">AIRSIDE</button></div>
@@ -45,6 +47,20 @@
     const lens = ROADS.map((pts) => { let L = 0; const segs = pts.slice(1).map((p, i) => { const d = Math.hypot(p[0] - pts[i][0], p[1] - pts[i][1]); L += d; return d; }); return { L, segs }; });
     const cars = Array.from({ length: 9 }, (_, i) => ({ r: i % ROADS.length, t: rr(), v: 0.04 + rr() * 0.05, c: i % 3 ? '#22d3ee' : '#f5b50b' }));
       let faces = [];
+    const ROUTES = [
+      [[230, 440], [270, 380], [285, 330], [430, 320], [520, 300], [640, 300], [700, 200]],
+      [[430, 195], [430, 300], [520, 300], [800, 295]],
+      [[110, 400], [110, 448], [230, 448], [285, 330]],
+      [[190, 120], [190, 200], [285, 200], [285, 325]],
+    ];
+    const rlen = ROUTES.map((pts) => { const segs = pts.slice(1).map((p, i) => Math.hypot(p[0] - pts[i][0], p[1] - pts[i][1])); return { segs, L: segs.reduce((a, b) => a + b, 0) }; });
+    const rt = AF.rng(99), hexId = () => 'P-' + Math.floor(rt() * 65536).toString(16).toUpperCase().padStart(4, '0');
+    const mkTok = () => ({ id: hexId(), route: Math.floor(rt() * ROUTES.length), t: rt(), v: 0.018 + rt() * 0.03, risk: Math.round(Math.pow(rt(), 2.6) * 80), trail: [], acc: 0 });
+    const toks = Array.from({ length: 42 }, mkTok); toks[0].id = 'P-4F2A'; toks[0].risk = 78; toks[0].route = 3;
+    const tokPos = (k) => { const pts = ROUTES[k.route], L = rlen[k.route]; let d = k.t * L.L; for (let i = 0; i < L.segs.length; i++) { if (d <= L.segs[i]) { const f = d / L.segs[i]; return [pts[i][0] + (pts[i + 1][0] - pts[i][0]) * f, pts[i][1] + (pts[i + 1][1] - pts[i][1]) * f]; } d -= L.segs[i]; } return pts[pts.length - 1]; };
+    const zoneAt = (x, y) => Object.keys(H).find((z) => { const r = AF.geo.GZ[z]; return x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h; });
+    let tokScreen = [], lastT = 0;
+    const FOV = { 'CAM-01': [0, 1.05, 120], 'CAM-02': [-1.57, 1.1, 110], 'CAM-03': [0, 1.0, 110], 'CAM-04': [0, 1.05, 130], 'CAM-05': [3.14, 1.1, 90], 'CAM-06': [3.14, 1.0, 150] };
     function fit() {
       const r = cv.getBoundingClientRect(), d = Math.min(window.devicePixelRatio || 1, 2);
       CW = Math.max(300, r.width); CH = Math.max(300, r.height);
@@ -120,6 +136,33 @@
           }
         }
       }
+      // field-of-view cones
+      if (S.layers.fov) for (const c of AF.cameras) {
+        if (!inScope(c.zone)) continue;
+        const [x, y] = AF.geo.CAMG[c.id], [a0, w, rg] = FOV[c.id], a = a0 + Math.sin(t * 0.6 + c.id.charCodeAt(4)) * 0.12, z = H[c.zone] + 1, hot = openBy[c.zone] > 0;
+        const ap = P(x, y, z), rgb = hot ? '239,68,68' : '34,211,238', gr = g.createRadialGradient(ap[0], ap[1], 0, ap[0], ap[1], rg * K * 0.95);
+        gr.addColorStop(0, `rgba(${rgb},.38)`); gr.addColorStop(1, `rgba(${rgb},.02)`);
+        g.beginPath(); g.moveTo(ap[0], ap[1]); for (let k = 0; k <= 12; k++) { const aa = a - w / 2 + (w * k) / 12, q = P(x + Math.cos(aa) * rg, y + Math.sin(aa) * rg, z); g.lineTo(q[0], q[1]); } g.closePath();
+        g.fillStyle = gr; g.fill(); g.strokeStyle = `rgba(${rgb},.55)`; g.lineWidth = 1; g.stroke();
+      }
+      // live tokens
+      tokScreen = [];
+      if (S.layers.tokens) {
+        const dt = lastT ? Math.min(0.1, t - lastT) : 0; lastT = t;
+        for (const k of toks) {
+          k.t += k.v * dt;
+          if (k.t >= 1) { const keep = k.id === 'P-4F2A'; Object.assign(k, mkTok(), keep ? { id: 'P-4F2A', risk: 78, route: 3 } : {}); k.t = 0; }
+          const [x, y] = tokPos(k), zn = zoneAt(x, y), z = (zn ? H[zn] : 0) + 3;
+          if (zn && !inScope(zn)) continue;
+          k.acc += dt; if (k.acc > 0.12) { k.acc = 0; k.trail.push([x, y, z]); if (k.trail.length > 16) k.trail.shift(); }
+          if (S.layers.trails && k.risk >= 35 && k.trail.length > 1) { g.beginPath(); k.trail.forEach((p, i) => { const q = P(p[0], p[1], p[2]); i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1]); }); g.strokeStyle = k.risk >= 65 ? 'rgba(239,68,68,.7)' : 'rgba(245,181,11,.6)'; g.lineWidth = 1.6; g.stroke(); }
+          const q = P(x, y, z), col = k.risk >= 65 ? '#ef4444' : k.risk >= 35 ? '#f5b50b' : '#e6f2f0';
+          g.beginPath(); g.arc(q[0], q[1], k.risk >= 35 ? 3.4 : 2.2, 0, 7); g.fillStyle = col; g.fill();
+          if (k.risk >= 65) { g.beginPath(); g.arc(q[0], q[1], 7 + Math.sin(t * 5) * 2, 0, 7); g.strokeStyle = 'rgba(239,68,68,.8)'; g.lineWidth = 1.5; g.stroke(); }
+          if (k.id === 'P-4F2A' || S.tokHover === k) { g.fillStyle = '#fff'; g.font = '700 10px ui-monospace,monospace'; g.textAlign = 'center'; g.fillText(k.id, q[0], q[1] - 10); }
+          tokScreen.push([k, q]);
+        }
+      }
       // cameras
       for (const c of AF.cameras) { const p = AF.geo.CAMG[c.id], q = P(p[0], p[1], H[c.zone] + 8); const on = inScope(c.zone); g.globalAlpha = on ? 1 : 0.25; g.beginPath(); g.arc(q[0], q[1], 6, 0, 7); g.fillStyle = '#071012'; g.fill(); g.strokeStyle = '#22d3ee'; g.lineWidth = 1.6; g.stroke(); g.fillStyle = '#d7f6ff'; g.font = '700 7px ui-monospace,monospace'; g.fillText(c.id.slice(-2), q[0], q[1] + 2.5); g.globalAlpha = 1; }
       const tw = P(900, 325, 0), tt = P(900, 325, 70); line(tw, tt, 'rgba(34,211,238,.8)', 3); g.beginPath(); g.arc(tt[0], tt[1], 5, 0, 7); g.fillStyle = '#22d3ee'; g.fill();
@@ -136,6 +179,7 @@
       const al = selz ? AF.alerts.filter((a) => a.zone === selz.id && a.status !== 'Auto-cleared' && a.status !== 'Resolved') : [];
       return `<div class="gp-h"><div><b>${M.name.toUpperCase()}</b> <span class="badge ok">LIVE</span><div class="mut sm">Airport-wide · ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div></div></div>
         <div class="rings">${ring(S.mod === 'energy' ? avg : avg, S.mod === 'energy' ? 260 : 100, colOf(M.bad(avg)), 'Average', M.fmt(avg))}${ring(worst.v, S.mod === 'energy' ? 260 : 100, colOf(M.bad(worst.v)), M.worst === 'min' ? 'Lowest' : 'Peak', M.fmt(worst.v))}${ring(AF.alerts.filter((a) => a.status === 'New').length, 6, '#ef4444', 'Open alerts', AF.alerts.filter((a) => a.status === 'New').length)}</div>
+        <p class="sm mut">${toks.length} live tokens · ${toks.filter((k) => k.risk >= 35).length} with risk 35+ · ${toks.filter((k) => k.risk >= 65).length} high</p>
         <h4>${M.title}</h4><div class="rank">${zones.map((x) => `<button class="rk ${S.sel === x.z.id ? 'on' : ''}" data-z="${x.z.id}"><span class="dot" style="background:${colOf(M.bad(x.v))}"></span><span>${esc(x.z.name)}</span><b>${M.fmt(x.v)}</b></button>`).join('')}</div>
         ${selz ? `<h4>${esc(selz.name)}</h4><p class="sm">${al.length ? `${al.length} open alert(s): ` + al.map((a) => esc(a.type)).join(', ') : 'No open alerts.'} Occupancy ${Math.round(val('occupancy', selz.id, t))}%, HVAC ${Math.round(val('hvac', selz.id, t))}%, load ${Math.round(val('energy', selz.id, t))} kW.</p><div class="btnrow"><a class="btn sm" href="#/geo">Open on map</a>${selz.cam ? `<a class="btn sm" href="#/cameras/${selz.cam}">${selz.cam}</a>` : ''}</div>` : ''}
         <div class="adv"><div class="adv-h"><span class="badge info">AI</span> Predictive advisory</div><p class="sm">${esc(M.adv())}</p></div>`;
@@ -145,12 +189,17 @@
     const pos = (e) => { const r = cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
     const hit = (pt) => { for (let i = faces.length - 1; i >= 0; i--) { const fc = faces[i]; if (fc.on && fc.f.some((pl) => inPoly(pt, pl))) return fc.z; } return null; };
     cv.addEventListener('mousemove', (e) => {
-      const z = hit(pos(e)); S.hover = z; cv.style.cursor = z ? 'pointer' : 'default';
+      const pt = pos(e); let th = null, bd = 10;
+      for (const [k, q] of tokScreen) { const d = Math.hypot(q[0] - pt[0], q[1] - pt[1]); if (d < bd) { bd = d; th = k; } }
+      S.tokHover = th;
+      if (th) { S.hover = null; cv.style.cursor = 'default'; tip.hidden = false; tip.style.left = e.offsetX + 14 + 'px'; tip.style.top = e.offsetY + 14 + 'px'; tip.textContent = `Token ${th.id} · risk ${th.risk} · ${th.risk < 20 ? 'express' : th.risk < 70 ? 'standard' : 'enhanced'} lane`; return; }
+      const z = hit(pt); S.hover = z; cv.style.cursor = z ? 'pointer' : 'default';
       if (z) { const zz = AF.zones.find((q) => q.id === z); tip.hidden = false; tip.style.left = e.offsetX + 14 + 'px'; tip.style.top = e.offsetY + 14 + 'px'; tip.textContent = `${zz.name} · ${MODS[S.mod].fmt(val(S.mod, z, performance.now() / 1000))}`; } else tip.hidden = true;
     });
-    cv.addEventListener('mouseleave', () => { S.hover = null; tip.hidden = true; });
+    cv.addEventListener('mouseleave', () => { S.hover = null; S.tokHover = null; tip.hidden = true; });
     cv.addEventListener('click', (e) => { S.sel = hit(pos(e)); paint(); });
     view.querySelector('.tmods').addEventListener('click', (e) => { const b = e.target.closest('button[data-m]'); if (!b) return; S.mod = b.dataset.m; view.querySelectorAll('.tm[data-m]').forEach((x) => x.classList.toggle('on', x === b)); paint(); });
+    view.querySelector('.tmods').addEventListener('change', (e) => { if (e.target.dataset.l) S.layers[e.target.dataset.l] = e.target.checked; });
     view.querySelector('.ttabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; S.scope = b.dataset.s; view.querySelectorAll('.ttabs button').forEach((x) => x.classList.toggle('on', x === b)); });
     view.querySelector('#tpanel').addEventListener('click', (e) => { const b = e.target.closest('[data-z]'); if (b) { S.sel = S.sel === b.dataset.z ? null : b.dataset.z; paint(); } });
     const paint = () => { view.querySelector('#tpanel').innerHTML = panel(performance.now() / 1000); };
