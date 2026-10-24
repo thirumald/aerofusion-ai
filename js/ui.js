@@ -107,14 +107,16 @@
     on(target, ev, fn) { target.addEventListener(ev, fn); cleanups.push(() => target.removeEventListener(ev, fn)); },
   };
   function route() {
-    const [, name = 'overview', arg] = location.hash.split('/');
-    const page = AF.pages[name] || AF.pages.overview;
+    const [, name = 'geo', arg] = location.hash.split('/');
+    const page = AF.pages[name] || AF.pages.geo;
     cleanups.forEach((f) => { try { f(); } catch (e) { /* ignore */ } });
     cleanups = [];
     const view = $('#view');
     view.innerHTML = '';
+    view.className = '';
+    $('#dd-menu').hidden = true; $('#dd-btn').setAttribute('aria-expanded', 'false');
     page(view, arg ? decodeURIComponent(arg) : null, ctx);
-    const active = AF.pages[name] ? name : 'overview';
+    const active = AF.pages[name] ? name : 'geo';
     $$('.nav a').forEach((a) => a.classList.toggle('on', a.dataset.r === active));
     window.scrollTo(0, 0);
     $('#title').textContent = $(`.nav a[data-r="${active}"]`).dataset.t;
@@ -163,6 +165,10 @@
       $('#live-l').textContent = AF.state.live ? 'Live alerts: on' : 'Live alerts: off';
       scheduleLive();
     });
+    const dd = $('#dd-btn'), menu = $('#dd-menu');
+    dd.addEventListener('click', (e) => { e.stopPropagation(); menu.hidden = !menu.hidden; dd.setAttribute('aria-expanded', String(!menu.hidden)); });
+    document.addEventListener('click', (e) => { if (!menu.contains(e.target)) { menu.hidden = true; dd.setAttribute('aria-expanded', 'false'); } });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { menu.hidden = true; dd.setAttribute('aria-expanded', 'false'); } });
     $('#nav-toggle').addEventListener('click', () => $('.side').classList.toggle('open'));
     $$('.nav a').forEach((a) => a.addEventListener('click', () => $('.side').classList.remove('open')));
     route(); scheduleLive();

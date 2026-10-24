@@ -14,6 +14,7 @@
     <div class="brand"><svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="none" stroke="#22d3ee" stroke-width="2"/><circle cx="16" cy="16" r="5" fill="#22d3ee"/><path d="M16 2v6M16 24v6M2 16h6M24 16h6" stroke="#22d3ee" stroke-width="2"/></svg>
       <div><b>AeroFusion AI</b><span>Connecting the intelligence behind every detection</span></div></div>
     <nav class="nav" aria-label="Main">
+      <a href="#/geo" data-r="geo" data-t="Geo view"><i>◉</i> Geo view</a>
       <a href="#/overview" data-r="overview" data-t="Command center"><i>◈</i> Command center</a>
       <a href="#/cameras" data-r="cameras" data-t="Live cameras"><i>▣</i> Live cameras</a>
       <a href="#/checkpoint" data-r="checkpoint" data-t="Checkpoint"><i>⇄</i> Checkpoint</a>
@@ -29,7 +30,12 @@
   <div class="main">
     <header class="top">
       <button id="nav-toggle" class="btn menu" aria-label="Menu">☰</button>
-      <h1 id="title">Command center</h1>
+      <h1 id="title">Geo view</h1>
+      <div class="dd"><button id="dd-btn" class="btn" aria-haspopup="true" aria-expanded="false" aria-controls="dd-menu">Dashboards ▾</button>
+        <div id="dd-menu" class="dd-menu" hidden>
+          <a href="#/geo">Situational awareness (geo view)</a><a href="#/overview">Command center</a><a href="#/cameras">Live cameras</a><a href="#/checkpoint">Checkpoint person-to-bag</a>
+          <a href="#/fusion">Sensor fusion</a><a href="#/tracking">Spatiotemporal tracking</a><a href="#/incidents">Incident dashboard</a><a href="#/alerts">Alerts and dispatch</a>
+          <a href="#/routing">Adaptive routing</a><a href="#/governance">Roadmap and governance</a></div></div>
       <span class="sp"></span>
       <span class="badge info">SIMULATION</span>
       <button id="live" class="btn on" aria-pressed="true"><span class="dot ok"></span><span id="live-l">Live alerts: on</span></button>
@@ -44,5 +50,6 @@
 <script src="js/ui.js"></script>
 <script src="js/pages-ops.js"></script>
 <script src="js/pages-intel.js"></script>
+<script src="js/pages-geo.js"></script>
 </body>
 </html>
