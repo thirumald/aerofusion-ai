@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AeroFusion AI</title>
+<meta name="description" content="AeroFusion AI: a unified airport security intelligence platform. Static demo with simulated cameras, incidents and alerts.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23071012' stroke='%2322d3ee' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%2322d3ee'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand"><svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="none" stroke="#22d3ee" stroke-width="2"/><circle cx="16" cy="16" r="5" fill="#22d3ee"/><path d="M16 2v6M16 24v6M2 16h6M24 16h6" stroke="#22d3ee" stroke-width="2"/></svg>
+      <div><b>AeroFusion AI</b><span>Connecting the intelligence behind every detection</span></div></div>
+    <nav class="nav" aria-label="Main">
+      <a href="#/overview" data-r="overview" data-t="Command center"><i>◈</i> Command center</a>
+      <a href="#/cameras" data-r="cameras" data-t="Live cameras"><i>▣</i> Live cameras</a>
+      <a href="#/checkpoint" data-r="checkpoint" data-t="Checkpoint"><i>⇄</i> Checkpoint</a>
+      <a href="#/fusion" data-r="fusion" data-t="Sensor fusion"><i>◎</i> Sensor fusion</a>
+      <a href="#/tracking" data-r="tracking" data-t="Spatiotemporal tracking"><i>⌖</i> Tracking</a>
+      <a href="#/incidents" data-r="incidents" data-t="Incidents"><i>⚑</i> Incidents <em id="nb-inc" class="nb" hidden></em></a>
+      <a href="#/alerts" data-r="alerts" data-t="Alerts"><i>✦</i> Alerts <em id="nb-alerts" class="nb" hidden></em></a>
+      <a href="#/routing" data-r="routing" data-t="Adaptive routing"><i>⇶</i> Adaptive routing</a>
+      <a href="#/governance" data-r="governance" data-t="Roadmap and governance"><i>☰</i> Roadmap &amp; governance</a>
+    </nav>
+    <p class="side-note">Demo with synthetic data. No real footage, people or airport systems.</p>
+  </aside>
+  <div class="main">
+    <header class="top">
+      <button id="nav-toggle" class="btn menu" aria-label="Menu">☰</button>
+      <h1 id="title">Command center</h1>
+      <span class="sp"></span>
+      <span class="badge info">SIMULATION</span>
+      <button id="live" class="btn on" aria-pressed="true"><span class="dot ok"></span><span id="live-l">Live alerts: on</span></button>
+      <span id="clock" class="mono mut"></span>
+    </header>
+    <main id="view"></main>
+  </div>
+</div>
+<div id="toasts" aria-live="polite"></div>
+<script src="js/sim.js"></script>
+<script src="js/data.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/pages-ops.js"></script>
+<script src="js/pages-intel.js"></script>
+</body>
+</html>
