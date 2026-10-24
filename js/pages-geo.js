@@ -11,6 +11,7 @@
   };
   const CAMG = { 'CAM-01': [350, 440], 'CAM-02': [285, 325], 'CAM-03': [430, 325], 'CAM-04': [285, 195], 'CAM-05': [430, 195], 'CAM-06': [700, 180] };
   const OFFG = { 'O-1': [610, 295], 'O-2': [455, 370], 'O-3': [270, 452], 'O-4': [240, 215] };
+  AF.geo = { GZ, CAMG, OFFG };
   const SEVN = { crit: 'Critical', warn: 'Major', info: 'Moderate' };
   const ADV = {
     corridor: 'Bag B-91C3 matches abandonment rule A-12 (conf 0.82). Owner re-entry probability 0.71 within 8 min. Hold a 5 m standoff with O-4. No evacuation advised.',

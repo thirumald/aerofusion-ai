@@ -19,12 +19,12 @@
   /* Facility map (SVG viewBox 0 0 800 400) */
   AF.zones = [
     { id: 'corridor', name: 'Restroom Corridor', short: 'Corridor', x: 20, y: 40, w: 260, h: 100, base: 14, cam: 'CAM-04' },
-    { id: 'hall', name: 'Check-in Hall B', x: 20, y: 150, w: 260, h: 140, base: 12, cam: 'CAM-02' },
-    { id: 'curb', name: 'Curbside Departures', x: 20, y: 300, w: 260, h: 70, base: 16, cam: 'CAM-01' },
+    { id: 'hall', name: 'Check-in Hall B', short: 'Check-in', x: 20, y: 150, w: 260, h: 140, base: 12, cam: 'CAM-02' },
+    { id: 'curb', name: 'Curbside Departures', short: 'Kerb', x: 20, y: 300, w: 260, h: 70, base: 16, cam: 'CAM-01' },
     { id: 'checkpoint', name: 'Security Checkpoint', short: 'Checkpoint', x: 300, y: 150, w: 130, h: 140, base: 20, cam: 'CAM-03' },
     { id: 'plaza', name: 'Meeting Plaza', short: 'Plaza', x: 300, y: 300, w: 130, h: 70, base: 15, cam: 'CAM-05' },
-    { id: 'sterile', name: 'Sterile Concourse', x: 450, y: 150, w: 330, h: 140, base: 8, cam: null },
-    { id: 'gate', name: 'Gates B10-B14', x: 450, y: 40, w: 330, h: 100, base: 9, cam: 'CAM-06' },
+    { id: 'sterile', name: 'Sterile Concourse', short: 'Concourse', x: 450, y: 150, w: 330, h: 140, base: 8, cam: null },
+    { id: 'gate', name: 'Gates B10-B14', short: 'Gates', x: 450, y: 40, w: 330, h: 100, base: 9, cam: 'CAM-06' },
   ];
   AF.camPos = {
     'CAM-01': [150, 335], 'CAM-02': [150, 220], 'CAM-03': [365, 220],
