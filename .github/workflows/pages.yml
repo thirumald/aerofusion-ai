@@ -1,7 +1,8 @@
 name: Deploy to GitHub Pages
+# One Pages site per repo, so two branches share it: main at the site root, develop under /develop/.
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
   workflow_dispatch:
 permissions:
   contents: read
@@ -11,32 +12,45 @@ concurrency:
   group: pages
   cancel-in-progress: true
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - run: node tests/core.test.js && node tests/cp.test.js && node tests/platform.test.js
   deploy:
-    needs: test
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - name: Write map key from repository secret (optional)
+        with:
+          ref: main
+          path: main
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          path: develop
+        continue-on-error: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Run tests on each branch
+        run: |
+          for b in main develop; do
+            [ -d "$b/tests" ] || continue
+            for f in $b/tests/*.test.js; do echo "$b: $f"; (cd $b && node ${f#$b/}); done
+          done
+      - name: Assemble site and write map key from repository secret (optional)
         env:
           GEOAPIFY_KEY: ${{ secrets.GEOAPIFY_KEY }}
         run: |
+          mkdir site
+          cp -r main/. site/ && rm -rf site/.git
+          if [ -d develop ]; then mkdir site/develop && cp -r develop/. site/develop/ && rm -rf site/develop/.git; fi
           if [ -n "$GEOAPIFY_KEY" ]; then
-            printf 'window.AF_CONFIG = { geoapifyKey: "%s" };\n' "$GEOAPIFY_KEY" > js/config.js
+            for d in site site/develop; do
+              [ -d "$d" ] && printf 'window.AF_CONFIG = { geoapifyKey: "%s" };\n' "$GEOAPIFY_KEY" > $d/js/config.js
+            done
           fi
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: site
       - id: deployment
         uses: actions/deploy-pages@v4
