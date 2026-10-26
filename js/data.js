@@ -14,7 +14,7 @@
   AF.rng = rng;
   const hex4 = (r) => Math.floor(r() * 65536).toString(16).toUpperCase().padStart(4, '0');
 
-  AF.airport = { name: 'Sample International Airport (SIA)', terminal: 'Terminal 1' };
+  AF.airport = { name: 'Abu Dhabi International Airport (AUH)', short: 'AUH', city: 'Abu Dhabi', terminal: 'Terminal A', tz: 'Asia/Dubai', lat: 24.4330, lon: 54.6511 };
 
   /* Facility map (SVG viewBox 0 0 800 400) */
   AF.zones = [

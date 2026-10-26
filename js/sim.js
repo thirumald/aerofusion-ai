@@ -376,7 +376,7 @@
     ctx.restore();
   }
 
-  function drawScene(ctx, W, H, sc, t, mini) {
+  function drawScene(ctx, W, H, sc, t, mini, raw) {
     const s = W / 640;
     ctx.save();
     ctx.fillStyle = sc.bg || '#0b1311'; ctx.fillRect(0, 0, W, H);
@@ -390,7 +390,7 @@
     const px = (st) => st.x * W, py = (st) => st.y * H;
 
     // trails
-    if (!mini) {
+    if (!mini && !raw) {
       for (const st of Object.values(amap)) {
         if (!st.vis || st.a.type === 'car') continue;
         ctx.beginPath(); let started = false;
@@ -405,7 +405,7 @@
     }
 
     // bag-owner links
-    for (const bs of bags) {
+    if (!raw) for (const bs of bags) {
       const own = amap[bs.assoc];
       if (!own || !own.vis || bs.b.link === false) continue;
       const mismatch = bs.carrier && bs.carrier !== bs.assoc;
@@ -431,7 +431,7 @@
     }
 
     // detection boxes
-    for (const st of Object.values(amap)) {
+    if (!raw) for (const st of Object.values(amap)) {
       if (!st.vis) continue;
       const rk = Math.round(st.risk);
       if (st.a.officer) { bbox(ctx, px(st), py(st) - 2 * s, 24 * s, 32 * s, '#60a5fa', mini ? '' : st.a.id + ' OFFICER', s, 1.2); continue; }
@@ -439,10 +439,10 @@
       if (st.a.type === 'car') bbox(ctx, px(st), py(st), 46 * s, 26 * s, col, mini ? '' : `${st.a.id} R${rk}`, s);
       else bbox(ctx, px(st), py(st) - 2 * s, 24 * s, 32 * s, col, mini ? '' : `${st.a.id} R${rk}`, s);
     }
-    for (const bs of bags) bbox(ctx, bs.x * W, bs.y * H, 15 * s, 13 * s, 'rgba(34,211,238,.9)', mini ? '' : bs.b.id, s, 1);
+    if (!raw) for (const bs of bags) bbox(ctx, bs.x * W, bs.y * H, 15 * s, 13 * s, 'rgba(34,211,238,.9)', mini ? '' : bs.b.id, s, 1);
 
     // unattended overlays
-    for (const bs of bags) {
+    if (!raw) for (const bs of bags) {
       const u = bs.b.unattended;
       if (!u || t < u[0] || t > u[1]) continue;
       const sec = (t - u[0]) * sc.clock.scale;
@@ -457,7 +457,7 @@
       ctx.restore();
     }
     // flags
-    for (const f of sc.flags || []) {
+    if (!raw) for (const f of sc.flags || []) {
       if (t < f.from || t > f.to) continue;
       const bs = bags.find((b) => b.b.id === f.bag);
       if (!bs) continue;
@@ -475,7 +475,7 @@
     }
 
     // event banner
-    if (!mini) {
+    if (!mini && !raw) {
       const ev = [...sc.events].reverse().find((e) => e.t <= t && t - e.t < 5);
       if (ev) {
         const col = { info: '#60a5fa', warn: '#f59e0b', crit: '#ef4444', ok: '#34d399' }[ev.level];
@@ -499,12 +499,14 @@
     g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.55)');
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
 
-    ctx.font = `bold ${10 * s}px ui-monospace,monospace`; ctx.textBaseline = 'top'; ctx.textAlign = 'left';
-    ctx.fillStyle = 'rgba(220,245,240,.9)';
-    ctx.fillText(mini ? sc.cam : `${sc.cam}  ${sc.name.toUpperCase()}`, 8 * s, 7 * s);
-    ctx.textAlign = 'right';
-    ctx.fillText(fmtClock(sc, t), W - 8 * s, 7 * s);
-    if (Math.floor(t * 2) % 2 === 0) { ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.arc(W - (mini ? 66 : 78) * s, 12 * s, 3.2 * s, 0, 7); ctx.fill(); }
+    if (!raw) {
+      ctx.font = `bold ${10 * s}px ui-monospace,monospace`; ctx.textBaseline = 'top'; ctx.textAlign = 'left';
+      ctx.fillStyle = 'rgba(220,245,240,.9)';
+      ctx.fillText(mini ? sc.cam : `${sc.cam}  ${sc.name.toUpperCase()}`, 8 * s, 7 * s);
+      ctx.textAlign = 'right';
+      ctx.fillText('SIM · ' + fmtClock(sc, t), W - 8 * s, 7 * s);
+      if (Math.floor(t * 2) % 2 === 0) { ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.arc(W - (mini ? 90 : 102) * s, 12 * s, 3.2 * s, 0, 7); ctx.fill(); }
+    }
     ctx.restore();
   }
 
@@ -524,7 +526,7 @@
   class Player {
     constructor(canvas, sc, o = {}) {
       this.c = canvas; this.sc = sc; this.mini = !!o.mini; this.speed = 1;
-      this.t = o.startAt || 0; this.playing = o.autoplay !== false; this.onTick = o.onTick; this.loop = o.loop !== false;
+      this.t = o.startAt || 0; this.playing = o.autoplay !== false; this.onTick = o.onTick; this.loop = o.loop !== false; this.raw = !!o.raw;
       const size = o.size || [W0, H0];
       canvas.width = size[0]; canvas.height = size[1];
       this.ctx = canvas.getContext('2d');
@@ -540,9 +542,17 @@
       this.draw();
       if (this.onTick) this.onTick(this.t, this);
     }
-    draw() { drawScene(this.ctx, this.c.width, this.c.height, this.sc, this.t, this.mini); }
+    draw() { drawScene(this.ctx, this.c.width, this.c.height, this.sc, this.t, this.mini, this.raw); }
     seek(t) { this.t = Math.max(0, Math.min(this.sc.duration, t)); this.draw(); }
   }
 
-  window.Sim = { scen: SCEN, Player, fmtClock, fmtDur, eventsUpTo, snapshot, riskColor, seriesAt, W0, H0 };
+  /* boxes of everything the renderer draws as a person or bag, in canvas pixels (used to annotate sample footage) */
+  function boxes(sc, t, W, H) {
+    const s = W / 640, amap = actorStates(sc, t), out = [];
+    for (const st of Object.values(amap)) { if (!st.vis || st.a.type === 'car') continue; out.push({ cls: 'person', bbox: [st.x * W - 12 * s, st.y * H - 18 * s, 24 * s, 32 * s] }); }
+    for (const bs of bagStates(sc, t, amap)) out.push({ cls: 'bag', bbox: [bs.x * W - 7.5 * s, bs.y * H - 6.5 * s, 15 * s, 13 * s] });
+    return out;
+  }
+
+  window.Sim = { boxes, scen: SCEN, Player, fmtClock, fmtDur, eventsUpTo, snapshot, riskColor, seriesAt, W0, H0 };
 })();

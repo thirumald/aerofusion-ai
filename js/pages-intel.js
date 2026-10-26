@@ -171,7 +171,7 @@
     view.querySelector('#fs').addEventListener('change', refresh);
     view.querySelector('#fst').addEventListener('change', refresh);
     if (inc) {
-      if (inc.scenario) new window.Sim.Player(view.querySelector('#dclip'), window.Sim.scen[inc.scenario], { size: [640, 360] });
+      if (inc.scenario) new window.Sim.Player(view.querySelector('#dclip'), window.Sim.scen[inc.scenario], { size: [640, 360], sim: true });
       view.querySelectorAll('[data-act]').forEach((b) => b.addEventListener('click', () => {
         const m = { ack: ['Investigating', 'Incident acknowledged'], dispatch: ['Investigating', 'Officer dispatched (silent alert sent)'], resolve: ['Resolved', 'Incident resolved'], fp: ['Resolved (false positive)', 'Marked as false positive, fed back to calibration'] }[b.dataset.act];
         inc.status = m[0]; AF.updateBadges(); ui.toast(m[1], 'ok'); AF.pages.incidents(view, arg);

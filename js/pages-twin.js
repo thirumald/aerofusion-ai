@@ -28,17 +28,20 @@
 
   AF.pages.twin = function (view, arg, ctx) {
     view.classList.add('geo');
-    const S = { mod: 'risk', scope: 'all', sel: null, hover: null, tokHover: null, layers: { fov: true, tokens: true, trails: true } };
+    const S = { mod: 'risk', scope: 'all', sel: null, hover: null, tokHover: null, scn: null, layers: { fov: true, tokens: true, trails: true } };
     view.innerHTML = `<div class="twin">
       <aside class="tmods"><div class="tm-h">MODULES</div>
         <div class="tm-g">TERMINAL OPERATIONS</div>${Object.entries(MODS).map(([k, m]) => `<button class="tm ${k === 'risk' ? 'on' : ''}" data-m="${k}">${m.name}</button>`).join('')}
+        <div class="tm-g">CRITICAL USE CASES</div>${AF.twinScenarios.map((s) => `<button class="tm sc" data-sc="${s.id}"><span class="sd ${s.sev}"></span>${esc(s.title)}</button>`).join('')}<button class="tm sc on" data-sc="">Live operations view</button>
         <div class="tm-g">LAYERS</div>
         <label class="tm lay"><input type="checkbox" data-l="fov" checked> Camera field of view</label><label class="tm lay"><input type="checkbox" data-l="tokens" checked> Live tokens</label><label class="tm lay"><input type="checkbox" data-l="trails" checked> Risk trails</label>
         <div class="tm-g">DOMAIN DASHBOARDS</div><a class="tm" href="#/baggage">Baggage handling ›</a><a class="tm" href="#/passengers">Passenger flow ›</a><a class="tm" href="#/landside">Landside traffic ›</a>
         <div class="tm-g">RELATED</div><a class="tm" href="#/geo">Geo view ›</a><a class="tm" href="#/alerts">Alerts and dispatch ›</a></aside>
       <div class="tcenter"><div class="ttabs" role="tablist"><button class="on" data-s="all">AIRPORT</button><button data-s="term">TERMINAL</button><button data-s="air">AIRSIDE</button></div>
         <canvas id="tc" aria-label="3D digital twin of the airport"></canvas><div class="ttip" id="ttip" hidden></div>
-        <div class="tstat"><span class="dot ok"></span> TWIN ONLINE · SAMPLE INTERNATIONAL AIRPORT · SYNTHETIC DATA · click a building</div></div>
+        <div class="tctl" id="tctl" hidden><button class="btn sm" id="tc-play">Pause</button><button class="btn sm" id="tc-re">Restart</button><select id="tc-sp" aria-label="Speed"><option value="0.5">0.5x</option><option value="1" selected>1x</option><option value="2">2x</option></select><input type="range" id="tc-seek" min="0" max="1000" value="0" aria-label="Scenario position"><span class="mono" id="tc-clk"></span></div>
+        <div class="tbanner" id="tbanner" hidden></div>
+        <div class="tstat"><span class="dot ok"></span> TWIN ONLINE · ${esc(AF.airport.name.toUpperCase())} · ILLUSTRATIVE LAYOUT · click a building</div></div>
       <section class="tpanel" id="tpanel"></section></div>`;
     const cv = view.querySelector('#tc'), g = cv.getContext('2d'), tip = view.querySelector('#ttip');
     const rr = AF.rng(11);
@@ -80,6 +83,70 @@
     const inPoly = (pt, pl) => { let c = false; for (let i = 0, j = pl.length - 1; i < pl.length; j = i++) if ((pl[i][1] > pt[1]) !== (pl[j][1] > pt[1]) && pt[0] < ((pl[j][0] - pl[i][0]) * (pt[1] - pl[i][1])) / (pl[j][1] - pl[i][1]) + pl[i][0]) c = !c; return c; };
     const inScope = (z) => S.scope === 'all' || (S.scope === 'term' ? TERMINAL.includes(z) : AIRSIDE.includes(z));
 
+    /* ---------- critical use case playback ---------- */
+    const seriesAt = window.Sim.seriesAt;
+    const lerpPath = (path, t) => {
+      if (t <= path[0][0]) return [path[0][1], path[0][2]];
+      for (let i = 0; i < path.length - 1; i++) { const a = path[i], b = path[i + 1]; if (t >= a[0] && t < b[0]) { const f = (t - a[0]) / (b[0] - a[0]); return [a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f]; } }
+      const l = path[path.length - 1]; return [l[1], l[2]];
+    };
+    const visAt = (a, t) => !a.vis || a.vis.some((r) => t >= r[0] && t <= r[1]);
+    const roofZ = (x, y) => { const z = zoneAt(x, y); return z ? H[z] : 0; };
+    function slab(x, y, w, h, z0, z1, fill, edge) {
+      const a = P(x, y, z1), b = P(x + w, y, z1), c = P(x + w, y + h, z1), d = P(x, y + h, z1), b0 = P(x + w, y, z0), c0 = P(x + w, y + h, z0), d0 = P(x, y + h, z0);
+      poly([b, c, c0, b0], fill + 'aa', edge, 1); poly([d, c, c0, d0], fill + '88', edge, 1); poly([a, b, c, d], fill + 'ee', edge, 1);
+    }
+    function ringAt(x, y, z, r, col, square, lw) {
+      const pts = square ? [[x - r, y - r], [x + r, y - r], [x + r, y + r], [x - r, y + r]].map((q) => P(q[0], q[1], z)) : Array.from({ length: 28 }, (_, i) => { const a = (i / 28) * 6.2832; return P(x + Math.cos(a) * r, y + Math.sin(a) * r, z); });
+      poly(pts, col + '22', col, lw || 2);
+    }
+    function tag(q, text, col, dy) { g.font = '700 10px ui-monospace,monospace'; g.textAlign = 'center'; const w = g.measureText(text).width + 8; g.fillStyle = col; g.fillRect(q[0] - w / 2, q[1] + (dy || -20) - 10, w, 13); g.fillStyle = '#071012'; g.fillText(text, q[0], q[1] + (dy || -20)); }
+    function figure(kind, x, y, color, label, t) {
+      const z = kind === 'car' ? 3 : roofZ(x, y) + 3;
+      if (kind === 'car') { slab(x - 15, y - 7, 30, 14, 2, 7, color, 'rgba(255,255,255,.5)'); }
+      else {
+        const b = P(x, y, z), top = P(x, y, z + 10), sw = Math.max(2.2, K * 4);
+        g.fillStyle = 'rgba(0,0,0,.35)'; g.beginPath(); g.ellipse(b[0], b[1], sw * 1.5, sw * 0.7, 0, 0, 7); g.fill();
+        g.strokeStyle = color; g.lineWidth = sw; g.lineCap = 'round'; g.beginPath(); g.moveTo(b[0], b[1]); g.lineTo(top[0], top[1] + 3); g.stroke(); g.lineCap = 'butt';
+        g.fillStyle = kind === 'officer' ? '#bfdbfe' : '#f1f5f9'; g.beginPath(); g.arc(top[0], top[1], sw * 0.95, 0, 7); g.fill();
+        if (kind === 'officer') { g.strokeStyle = '#fff'; g.lineWidth = 1.2; g.stroke(); }
+      }
+      if (label) tag(P(x, y, z + 12), label, kind === 'intruder' ? '#ef4444' : kind === 'officer' ? '#60a5fa' : kind === 'car' ? '#9aa7a3' : '#e2e8f0', -4);
+    }
+    function bagPos(b, t, apos) {
+      const sg = b.segs.find((q) => t >= q.from && t < q.to); if (!sg) return null;
+      if (sg.carry) { const a = apos[sg.carry]; return a ? [a[0] + 4, a[1] + 3] : null; }
+      if (sg.move) { const f = (t - sg.from) / (sg.to - sg.from); return [sg.move[0] + (sg.move[2] - sg.move[0]) * f, sg.move[1] + (sg.move[3] - sg.move[1]) * f]; }
+      return sg.at;
+    }
+    function drawScenario(sc, t) {
+      const apos = {}, items = [];
+      for (const a of sc.actors) if (visAt(a, t)) { const p = lerpPath(a.path, t); apos[a.id] = p; items.push({ y: p[0] + p[1], f: () => figure(a.kind, p[0], p[1], a.color, a.label ? a.id : '', t) }); }
+      const bpos = {};
+      for (const b of sc.bags || []) { const p = bagPos(b, t, apos); if (!p) continue; bpos[b.id] = p; items.push({ y: p[0] + p[1], f: () => { const z = roofZ(p[0], p[1]) + 3; slab(p[0] - 3, p[1] - 3, 6, 6, z, z + 5, '#b08968', '#6b4f3a'); } }); }
+      // props (door, belt, lanes) and fence lines
+      for (const q of sc.props || []) { const z0 = roofZ(q.x, q.y); items.push({ y: q.x + q.y - 1, f: () => { slab(q.x, q.y, q.w, q.h, z0, z0 + 4, q.color(t), 'rgba(255,255,255,.55)'); if (q.label) tag(P(q.x + q.w / 2, q.y + q.h / 2, z0 + 4), q.label, '#334155', -6); } }); }
+      for (const l of sc.lines || []) { const col = l.color(t), a = P(l.a[0], l.a[1], 8), b = P(l.b[0], l.b[1], 8); g.save(); g.shadowColor = col; g.shadowBlur = 12; line(a, b, col, 4); line(P(l.a[0], l.a[1], 0), a, col, 2); line(P(l.b[0], l.b[1], 0), b, col, 2); g.restore(); tag(P((l.a[0] + l.b[0]) / 2, (l.a[1] + l.b[1]) / 2, 14), l.label, col, -2); }
+      if (sc.crowd) { const dots = sc.crowd.fn(t, sc.crowd.count(t)); for (const d of dots) { const q = P(d.x, d.y, roofZ(d.x, d.y) + 3); g.fillStyle = d.col; g.fillRect(q[0] - 1.5, q[1] - 1.5, 3, 3); } }
+      items.sort((a, b) => a.y - b.y).forEach((i) => i.f());
+      // rings
+      for (const r of sc.rings || []) {
+        if (t < r.from || t > r.to) continue;
+        const pos = r.bag ? bpos[r.bag] : r.actor ? apos[r.actor] : [r.x, r.y]; if (!pos) continue;
+        const pulse = 1 + Math.sin(t * 6) * 0.12, z = roofZ(pos[0], pos[1]) + 3;
+        ringAt(pos[0], pos[1], z, r.r * pulse, r.color, r.square, 2.4);
+        tag(P(pos[0], pos[1], z + 18), r.label(t), r.color, -8);
+      }
+      // alert beams
+      for (const bm of sc.beams || []) {
+        if (t < bm.from || t > bm.to) continue;
+        const zr = AF.geo.GZ[bm.zone], cx = zr.x + zr.w / 2, cy = zr.y + zr.h / 2, base = P(cx, cy, H[bm.zone]), top = P(cx, cy, H[bm.zone] + 52), pl = (Math.sin(t * 5) + 1) / 2;
+        g.save(); g.shadowColor = '#ef4444'; g.shadowBlur = 14; line(base, top, 'rgba(239,68,68,.85)', 3); g.beginPath(); g.arc(top[0], top[1], 9 + pl * 3, 0, 7); g.fillStyle = '#ef4444'; g.fill(); g.restore();
+        g.fillStyle = '#fff'; g.font = '800 11px system-ui'; g.textAlign = 'center'; g.fillText('!', top[0], top[1] + 4);
+      }
+    }
+    const scnEventIdx = () => (S.scn ? S.scn.def.events.filter((e) => e.t <= S.scn.t).length - 1 : -1);
+
     function box(x, y, w, h, z, fill, edge, lw, alpha) {
       const a = P(x, y, z), b = P(x + w, y, z), c = P(x + w, y + h, z), d = P(x, y + h, z);
       const b0 = P(x + w, y, 0), c0 = P(x + w, y + h, 0), d0 = P(x, y + h, 0);
@@ -116,15 +183,16 @@
       [[560, 392], [660, 392], [760, 392], [850, 392]].forEach((a, i) => { const q = P(a[0], a[1], 3); g.fillStyle = 'rgba(159,211,220,.55)'; g.fillRect(q[0] - 12, q[1] - 2.5, 24, 5); g.fillRect(q[0] - 3.5, q[1] - 12, 7, 24); });
       // zone buildings, back to front
       const order = Object.keys(H).sort((a, b) => AF.geo.GZ[a].x + AF.geo.GZ[a].y + AF.geo.GZ[a].w / 2 + AF.geo.GZ[a].h / 2 - (AF.geo.GZ[b].x + AF.geo.GZ[b].y + AF.geo.GZ[b].w / 2 + AF.geo.GZ[b].h / 2));
-      const M = MODS[S.mod]; faces = [];
-      const openBy = {}; AF.alerts.forEach((a) => { if (a.status === 'New') openBy[a.zone] = (openBy[a.zone] || 0) + 1; });
+      const sc = S.scn && S.scn.def, st = S.scn ? S.scn.t : 0;
+      const M = sc ? MODS.risk : MODS[S.mod]; faces = [];
+      const openBy = {}; if (!sc) AF.alerts.forEach((a) => { if (a.status === 'New') openBy[a.zone] = (openBy[a.zone] || 0) + 1; });
       for (const z of order) {
-        const r = AF.geo.GZ[z], v = val(S.mod, z, t), col = colOf(M.bad(v)), on = inScope(z), sel = S.sel === z, hov = S.hover === z;
+        const r = AF.geo.GZ[z], v = sc ? seriesAt((sc.heat || {})[z], st, AF.zones.find((q) => q.id === z).base) : val(S.mod, z, t), col = colOf(M.bad(v)), on = inScope(z), sel = S.sel === z, hov = S.hover === z;
         const f = box(r.x, r.y, r.w, r.h, H[z] + (hov ? 3 : 0), col, sel ? '#ffffff' : hov ? '#d7f6ff' : col + 'cc', sel ? 3 : hov ? 2.2 : 1.2, on ? 1 : 0.22);
         faces.push({ z, f, on });
         if (on) {
           // people dots on roof
-          const n = Math.round(6 + (BASE.occupancy[z] / 100) * 20);
+          const n = sc ? 0 : Math.round(6 + (BASE.occupancy[z] / 100) * 20);
           for (let i = 0; i < n; i++) { const d = dots[z][i]; d.a += 0.01 * d.s; const px = Math.min(r.x + r.w - 4, Math.max(r.x + 4, d.x + Math.cos(d.a) * 5)), py = Math.min(r.y + r.h - 4, Math.max(r.y + 20, d.y + Math.sin(d.a) * 5)), q = P(px, py, H[z] + 1); g.fillStyle = 'rgba(255,255,255,.65)'; g.fillRect(q[0], q[1], 2, 2); }
           const top = P(r.x + r.w / 2, r.y + r.h / 2, H[z] + 4);
           g.font = '600 12px system-ui'; g.textAlign = 'center'; g.fillStyle = '#e6f2f0'; g.fillText(AF.zones.find((q) => q.id === z).short || z, top[0], top[1] - 18);
@@ -139,7 +207,7 @@
       // field-of-view cones
       if (S.layers.fov) for (const c of AF.cameras) {
         if (!inScope(c.zone)) continue;
-        const [x, y] = AF.geo.CAMG[c.id], [a0, w, rg] = FOV[c.id], a = a0 + Math.sin(t * 0.6 + c.id.charCodeAt(4)) * 0.12, z = H[c.zone] + 1, hot = openBy[c.zone] > 0;
+        const [x, y] = AF.geo.CAMG[c.id], [a0, w, rg] = FOV[c.id], a = a0 + Math.sin(t * 0.6 + c.id.charCodeAt(4)) * 0.12, z = H[c.zone] + 1, hot = sc ? !!(sc.hot && sc.hot[c.id] && st >= sc.hot[c.id][0] && st <= sc.hot[c.id][1]) : openBy[c.zone] > 0;
         const ap = P(x, y, z), rgb = hot ? '239,68,68' : '34,211,238', gr = g.createRadialGradient(ap[0], ap[1], 0, ap[0], ap[1], rg * K * 0.95);
         gr.addColorStop(0, `rgba(${rgb},.38)`); gr.addColorStop(1, `rgba(${rgb},.02)`);
         g.beginPath(); g.moveTo(ap[0], ap[1]); for (let k = 0; k <= 12; k++) { const aa = a - w / 2 + (w * k) / 12, q = P(x + Math.cos(aa) * rg, y + Math.sin(aa) * rg, z); g.lineTo(q[0], q[1]); } g.closePath();
@@ -147,7 +215,8 @@
       }
       // live tokens
       tokScreen = [];
-      if (S.layers.tokens) {
+      if (sc) drawScenario(sc, st);
+      if (S.layers.tokens && !sc) {
         const dt = lastT ? Math.min(0.1, t - lastT) : 0; lastT = t;
         for (const k of toks) {
           k.t += k.v * dt;
@@ -170,7 +239,17 @@
     }
 
     /* ---------- panel ---------- */
+    function scenPanel() {
+      const sc = S.scn.def, t = S.scn.t, cur = scnEventIdx();
+      return `<div class="gp-h"><div><b>${esc(sc.title)}</b> <span class="badge ${sc.sev}">${sc.sev === 'crit' ? 'CRITICAL' : 'WARNING'}</span><div class="mut sm">${esc(sc.feature)} · ${esc(ui.zoneName(sc.zone))}</div></div></div>
+        <p class="sm">${esc(sc.summary)}</p>
+        <div class="kp3"><div><b>${sc.kpi[0]}</b><span>to detect</span></div><div><b>${sc.kpi[1]}</b><span>to dispatch</span></div><div><b>${sc.kpi[2]}</b><span>to resolve</span></div></div>
+        <h4>Timeline</h4><ol class="elog tl">${sc.events.map((e, i) => `<li data-i="${i}" class="${e.t <= t ? 'on ' : ''}${e.level} ${i === cur ? 'cur' : ''}"><span class="mono">${AF.twinClock(sc, e.t)}</span> ${esc(e.text)}</li>`).join('')}</ol>
+        <h4>Recommended actions</h4><ul class="sm bullets">${sc.actions.map((a) => `<li>${esc(a)}</li>`).join('')}</ul>
+        <div class="btnrow">${sc.cam ? `<a class="btn sm" href="#/cameras/${sc.cam}">Open ${sc.cam}</a>` : ''}${sc.incident ? `<a class="btn sm" href="#/incidents/${sc.incident}">Incident ${sc.incident}</a>` : ''}<a class="btn sm" href="#/geo">Open on map</a></div>`;
+    }
     function panel(t) {
+      if (S.scn) return scenPanel();
       const M = MODS[S.mod], zones = AF.zones.filter((z) => H[z.id]).map((z) => ({ z, v: val(S.mod, z.id, t) }));
       zones.sort((a, b) => (M.worst === 'min' ? a.v - b.v : b.v - a.v));
       const avg = zones.reduce((a, x) => a + x.v, 0) / zones.length, worst = zones[0];
@@ -197,18 +276,44 @@
       if (z) { const zz = AF.zones.find((q) => q.id === z); tip.hidden = false; tip.style.left = e.offsetX + 14 + 'px'; tip.style.top = e.offsetY + 14 + 'px'; tip.textContent = `${zz.name} · ${MODS[S.mod].fmt(val(S.mod, z, performance.now() / 1000))}`; } else tip.hidden = true;
     });
     cv.addEventListener('mouseleave', () => { S.hover = null; S.tokHover = null; tip.hidden = true; });
-    cv.addEventListener('click', (e) => { S.sel = hit(pos(e)); paint(); });
+    cv.addEventListener('click', (e) => { if (S.scn) return; S.sel = hit(pos(e)); paint(); });
     view.querySelector('.tmods').addEventListener('click', (e) => { const b = e.target.closest('button[data-m]'); if (!b) return; S.mod = b.dataset.m; view.querySelectorAll('.tm[data-m]').forEach((x) => x.classList.toggle('on', x === b)); paint(); });
     view.querySelector('.tmods').addEventListener('change', (e) => { if (e.target.dataset.l) S.layers[e.target.dataset.l] = e.target.checked; });
     view.querySelector('.ttabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; S.scope = b.dataset.s; view.querySelectorAll('.ttabs button').forEach((x) => x.classList.toggle('on', x === b)); });
     view.querySelector('#tpanel').addEventListener('click', (e) => { const b = e.target.closest('[data-z]'); if (b) { S.sel = S.sel === b.dataset.z ? null : b.dataset.z; paint(); } });
+
+    const setScn = (id) => {
+      const def = AF.twinScenarios.find((q) => q.id === id) || null;
+      S.scn = def ? { def, t: 0, playing: true, speed: 1, idx: -1 } : null; S.sel = null; S.scope = 'all';
+      view.querySelectorAll('.ttabs button').forEach((x) => x.classList.toggle('on', x.dataset.s === 'all'));
+      view.querySelectorAll('.tm[data-sc]').forEach((x) => x.classList.toggle('on', x.dataset.sc === (id || '')));
+      view.querySelector('#tctl').hidden = !def; view.querySelector('#tbanner').hidden = true;
+      view.querySelector('#tc-play').textContent = 'Pause'; view.querySelector('#tc-sp').value = '1'; paint();
+    };
+    view.querySelector('.tmods').addEventListener('click', (e) => { const b = e.target.closest('button[data-sc]'); if (b) setScn(b.dataset.sc); });
+    view.querySelector('#tc-play').addEventListener('click', (e) => { if (!S.scn) return; S.scn.playing = !S.scn.playing; e.target.textContent = S.scn.playing ? 'Pause' : 'Play'; });
+    view.querySelector('#tc-re').addEventListener('click', () => { if (S.scn) { S.scn.t = 0; S.scn.playing = true; view.querySelector('#tc-play').textContent = 'Pause'; paint(); } });
+    view.querySelector('#tc-sp').addEventListener('change', (e) => { if (S.scn) S.scn.speed = +e.target.value; });
+    view.querySelector('#tc-seek').addEventListener('input', (e) => { if (S.scn) { S.scn.t = (e.target.value / 1000) * S.scn.def.duration; paint(); } });
+    view.querySelector('#tpanel').addEventListener('click', (e) => { const li = e.target.closest('li[data-i]'); if (li && S.scn) { S.scn.t = Math.max(0, S.scn.def.events[+li.dataset.i].t - 0.05); paint(); } });
+    if (arg && AF.twinScenarios.some((q) => q.id === arg)) setTimeout(() => setScn(arg), 0);
     const paint = () => { view.querySelector('#tpanel').innerHTML = panel(performance.now() / 1000); };
     paint();
     let raf, lastP = 0;
+    let lastNow = 0;
     const loop = (now) => {
       if (!cv.isConnected) return;
+      const dtl = lastNow ? Math.min(0.1, (now - lastNow) / 1000) : 0; lastNow = now;
+      if (S.scn) {
+        if (S.scn.playing) { S.scn.t += dtl * S.scn.speed; if (S.scn.t >= S.scn.def.duration) S.scn.t = 0; }
+        const sc = S.scn.def, ix = scnEventIdx();
+        view.querySelector('#tc-seek').value = Math.round((S.scn.t / sc.duration) * 1000); view.querySelector('#tc-clk').textContent = AF.twinClock(sc, S.scn.t);
+        const ev = sc.events[ix], bn = view.querySelector('#tbanner');
+        if (ev && S.scn.t - ev.t < 5) { bn.hidden = false; bn.className = 'tbanner ' + ev.level; bn.textContent = AF.twinClock(sc, ev.t) + '  ' + ev.text; } else bn.hidden = true;
+        if (ix !== S.scn.idx) { S.scn.idx = ix; paint(); }
+      }
       draw(now / 1000);
-      if (now - lastP > 2000) { lastP = now; paint(); }
+      if (!S.scn && now - lastP > 2000) { lastP = now; paint(); }
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);

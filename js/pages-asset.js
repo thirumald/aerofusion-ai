@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   const AF = window.AF, ui = AF.ui, { esc } = ui;
-  const kpi = (label, val, delta, cls) => `<div class="kpi"><div class="kpi-l">${label}</div><div class="kpi-v">${val}</div><div class="kpi-d ${cls || 'up'}">${delta}</div></div>`;
+  const kpi = ui.kpi;
   const hb = (items, max) => `<div class="hbars">${items.map((i) => `<div class="hb"><span class="hb-l">${esc(i.l)}</span><span class="hb-t"><i style="width:${Math.min(100, (i.v / max) * 100)}%;background:${i.col || '#22d3ee'}"></i></span><b>${i.t != null ? i.t : i.v}</b></div>`).join('')}</div>`;
   const fmtSec = (s) => { const a = Math.abs(Math.round(s)); return (s < 0 ? '-' : '') + String(Math.floor(a / 60)).padStart(2, '0') + ':' + String(a % 60).padStart(2, '0'); };
 

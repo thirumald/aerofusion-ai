@@ -23,13 +23,13 @@
     sterile: 'No anomalies in the sterile concourse. All tokens were cleared at the checkpoint.',
   };
   const SCORE = [
-    { dom: 'Screening', title: 'Checkpoint throughput', sub: 'passengers / hour / lane', value: '612', st: 'good', trend: '+4% vs forecast', icon: '⇄' },
-    { dom: 'Screening', title: 'Average wait', sub: 'target 6m 30s', value: '6m 40s', st: 'moderate', trend: '-38% vs baseline', icon: '◷' },
-    { dom: 'Screening', title: 'Bag-to-owner match', sub: 'median resolve 0.4 s', value: '98.7%', st: 'good', trend: '+0.4 pt', icon: '⌖' },
-    { dom: 'Security', title: 'Alert response time', sub: 'critical, to officer on scene', value: '3m 10s', st: 'good', trend: 'target 4m', icon: '✦' },
-    { dom: 'Security', title: 'False alarm rate', sub: 'alerts closed as benign', value: '4.1%', st: 'moderate', trend: '-41% vs silo', icon: '◎' },
-    { dom: 'Operations', title: 'Camera uptime', sub: '6 of 6 feeds online', value: '99.2%', st: 'good', trend: '30-day', icon: '▣' },
-    { dom: 'Operations', title: 'Open critical alerts', sub: 'needs an officer', value: '', st: 'attn', trend: 'live', icon: '⚑', live: true },
+    { dom: 'Screening', title: 'Checkpoint throughput', sub: 'passengers / hour / lane', value: '612', st: 'good', trend: '+4% vs forecast', icon: 'scan' },
+    { dom: 'Screening', title: 'Average wait', sub: 'target 6m 30s', value: '6m 40s', st: 'moderate', trend: '-38% vs baseline', icon: 'clock' },
+    { dom: 'Screening', title: 'Bag-to-owner match', sub: 'median resolve 0.4 s', value: '98.7%', st: 'good', trend: '+0.4 pt', icon: 'crosshair' },
+    { dom: 'Security', title: 'Alert response time', sub: 'critical, to officer on scene', value: '3m 10s', st: 'good', trend: 'target 4m', icon: 'bell' },
+    { dom: 'Security', title: 'False alarm rate', sub: 'alerts closed as benign', value: '4.1%', st: 'moderate', trend: '-41% vs silo', icon: 'activity' },
+    { dom: 'Operations', title: 'Camera uptime', sub: '6 of 6 feeds online', value: '99.2%', st: 'good', trend: '30-day', icon: 'video' },
+    { dom: 'Operations', title: 'Open critical alerts', sub: 'needs an officer', value: '', st: 'attn', trend: 'live', icon: 'alert', live: true },
   ];
 
   const G = (AF.state.geo = AF.state.geo || { sel: null, type: null, sevOff: {}, win: 0, layers: { heat: true, cams: true, alerts: true, officers: true, perimeter: true }, view: { x: 0, y: 0, w: 1000, h: 560 }, focus: [], scDom: 'All', askOpen: false });
@@ -101,7 +101,7 @@
     if (!G.sel) return '';
     if (G.type === 'cam') {
       const c = AF.cameras.find((x) => x.id === G.sel), u = AF.useCases[c.scenario], sc = window.Sim.scen[c.scenario];
-      return `<div class="gp-h"><div><b>${c.id}</b> <span class="badge ok">LIVE</span><div class="mut sm">${esc(c.name)}</div></div><button class="btn sm" data-close aria-label="Close panel">✕</button></div>
+      return `<div class="gp-h"><div><b>${c.id}</b> <span class="badge ok">LIVE</span><div class="mut sm">${esc(c.name)}</div></div><button class="btn sm" data-close aria-label="Close panel">${AF.icon('x', 14)}</button></div>
         <div class="vid"><canvas id="gcam"></canvas><span class="vid-tag">SIMULATED</span></div>
         <h4>${esc(u.title)}</h4><p class="sm">${esc(u.what)}</p>
         <ol class="elog sm">${sc.events.slice(0, 4).map((e) => `<li class="on ${e.level}"><span class="mono">${window.Sim.fmtClock(sc, e.t)}</span> ${esc(e.text)}</li>`).join('')}</ol>
@@ -109,12 +109,12 @@
     }
     if (G.type === 'off') {
       const o = AF.officers.find((x) => x.id === G.sel), a = AF.alerts.find((x) => x.id === o.alertId);
-      return `<div class="gp-h"><div><b>${o.id}</b> <span class="badge ${o.status === 'Available' ? 'ok' : 'warn'}">${o.status}</span><div class="mut sm">${esc(o.post)}</div></div><button class="btn sm" data-close aria-label="Close panel">✕</button></div>
+      return `<div class="gp-h"><div><b>${o.id}</b> <span class="badge ${o.status === 'Available' ? 'ok' : 'warn'}">${o.status}</span><div class="mut sm">${esc(o.post)}</div></div><button class="btn sm" data-close aria-label="Close panel">${AF.icon('x', 14)}</button></div>
         <p class="sm">${a ? `Responding to <b>${esc(a.type)}</b> in ${esc(ui.zoneName(a.zone))}.` : 'No active assignment. Handheld is in silent mode.'}</p><a class="btn pri" href="#/alerts">Open dispatch</a>`;
     }
     const z = AF.zones.find((x) => x.id === G.sel), r = ui.zoneRisk(z.id), list = AF.alerts.filter((a) => a.zone === z.id && a.status !== 'Auto-cleared' && a.status !== 'Resolved');
     const cams = AF.cameras.filter((c) => c.zone === z.id);
-    return `<div class="gp-h"><div><b>${esc(z.name)}</b> <span class="badge ${r >= 55 ? 'crit' : r >= 30 ? 'warn' : 'ok'}">${r >= 55 ? 'CRITICAL' : r >= 30 ? 'WATCH' : 'NORMAL'}</span><div class="mut sm">Live · ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div></div><button class="btn sm" data-close aria-label="Close panel">✕</button></div>
+    return `<div class="gp-h"><div><b>${esc(z.name)}</b> <span class="badge ${r >= 55 ? 'crit' : r >= 30 ? 'warn' : 'ok'}">${r >= 55 ? 'CRITICAL' : r >= 30 ? 'WATCH' : 'NORMAL'}</span><div class="mut sm">Live · ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div></div><button class="btn sm" data-close aria-label="Close panel">${AF.icon('x', 14)}</button></div>
       <div class="rings">${ring(r, 100, ui.riskColor(r).replace('var(--crit)', '#ef4444').replace('var(--warn)', '#f59e0b').replace('var(--ok)', '#34d399'), 'Zone risk')}${ring(list.length, 5, '#f59e0b', 'Open alerts')}${ring(cams.length, 2, '#22d3ee', 'Cameras', cams.length || '-')}</div>
       <h4>Open alerts</h4>${list.length ? list.slice(0, 4).map((a) => `<a class="arow" href="${a.incident && AF.incidents.find((i) => i.id === a.incident) ? '#/incidents/' + a.incident : '#/alerts'}"><span class="dot ${a.sev}"></span><div><b>${esc(a.type)}</b><div class="mut sm">${esc(a.text)}</div></div><span class="mut sm">${ui.ago(a.t)}</span></a>`).join('') : '<p class="sm mut">No open alerts in this zone.</p>'}
       ${cams.length ? `<h4>Cameras</h4><div class="chips">${cams.map((c) => `<a class="chip" href="#/cameras/${c.id}">${c.id}</a>`).join('')}</div>` : ''}
@@ -144,7 +144,7 @@
     const crit = AF.alerts.filter((a) => a.sev === 'crit' && a.status === 'New').length;
     return SCORE.filter((t) => G.scDom === 'All' || t.dom === G.scDom).map((t) => {
       const v = t.live ? crit : t.value, st = t.live ? (crit ? 'attn' : 'good') : t.st;
-      return `<div class="tile"><div class="tile-h">${t.dom.toUpperCase()}</div><div class="tile-t">${esc(t.title)}</div><div class="tile-s">${esc(t.sub)}</div><div class="tile-b"><span class="tile-i">${t.icon}</span><span class="tile-v ${st}">${v}</span></div><div class="tile-d">${esc(t.trend)}</div></div>`;
+      return `<div class="tile"><div class="tile-h">${t.dom.toUpperCase()}</div><div class="tile-t">${esc(t.title)}</div><div class="tile-s">${esc(t.sub)}</div><div class="tile-b"><span class="tile-i">${AF.icon(t.icon, 24)}</span><span class="tile-v ${st}">${v}</span></div><div class="tile-d">${esc(t.trend)}</div></div>`;
     }).join('');
   }
 
@@ -159,17 +159,17 @@
       <div class="geo-map" id="gm">
         <div id="gsvgwrap">${mapSvg()}</div>
         <div class="gtools" role="toolbar" aria-label="Map tools">
-          <button class="gt" data-t="layers" title="Layers" aria-label="Layers">☰</button><button class="gt" data-t="reset" title="Reset view" aria-label="Reset view">◉</button>
-          <button class="gt" data-t="full" title="Fullscreen" aria-label="Fullscreen">⛶</button><button class="gt" data-t="search" title="Search" aria-label="Search">⌕</button>
-          <button class="gt" data-t="win" title="Alert time window" aria-label="Alert time window">↺</button>
-          <button class="gt" data-t="zin" title="Zoom in" aria-label="Zoom in">+</button><button class="gt" data-t="zout" title="Zoom out" aria-label="Zoom out">−</button></div>
+          <button class="gt" data-t="layers" title="Layers" aria-label="Layers">${AF.icon('layers', 18)}</button><button class="gt" data-t="reset" title="Reset view" aria-label="Reset view">${AF.icon('reset', 18)}</button>
+          <button class="gt" data-t="full" title="Fullscreen" aria-label="Fullscreen">${AF.icon('maximize', 18)}</button><button class="gt" data-t="search" title="Search" aria-label="Search">${AF.icon('search', 18)}</button>
+          <button class="gt" data-t="win" title="Alert time window" aria-label="Alert time window">${AF.icon('clock', 18)}</button>
+          <button class="gt" data-t="zin" title="Zoom in" aria-label="Zoom in">${AF.icon('plus', 18)}</button><button class="gt" data-t="zout" title="Zoom out" aria-label="Zoom out">${AF.icon('minus', 18)}</button></div>
         <div class="glayers" id="glayers" hidden><b>Layers</b>${[['heat', 'Risk heat'], ['cams', 'Cameras'], ['alerts', 'Alert clusters'], ['officers', 'Officers'], ['perimeter', 'Perimeter']].map(([k, l]) => `<label><input type="checkbox" data-l="${k}" ${G.layers[k] ? 'checked' : ''}> ${l}</label>`).join('')}</div>
         <div class="gsearch" id="gsearch" hidden><input id="gq" type="search" placeholder="Search zone, camera, incident, token..." aria-label="Search the map"><div id="gres"></div></div>
         <div class="gwin" id="gwin" hidden></div>
         <div class="gpanel" id="gpanel" ${G.sel ? '' : 'hidden'}>${panelHTML()}</div>
-        <div class="gask" id="gask" ${G.askOpen ? '' : 'hidden'}><div class="gask-h"><b>AskAero</b><button class="btn sm" data-askclose aria-label="Close assistant">✕</button></div><div class="gask-b" id="gab"><div class="msg bot"><p>Ask about alerts, bags, officers or zones. Answers come from the sample data.</p></div></div>
+        <div class="gask" id="gask" ${G.askOpen ? '' : 'hidden'}><div class="gask-h"><b>AskAero</b><button class="btn sm" data-askclose aria-label="Close assistant">${AF.icon('x', 14)}</button></div><div class="gask-b" id="gab"><div class="msg bot"><p>Ask about alerts, bags, officers or zones. Answers come from the sample data.</p></div></div>
           <div class="sug">${SUGGEST.map((q) => `<button class="chip" data-q="${esc(q)}">${esc(q)}</button>`).join('')}</div><form id="gaf"><input id="gai" placeholder="Ask AskAero..." aria-label="Ask AskAero" autocomplete="off"><button class="btn pri">Ask</button></form></div>
-        <div class="gbottom"><button class="askbtn" id="askbtn">◈ AskAero</button><div class="sevchips" id="chips">${chips()}</div></div>
+        <div class="gbottom"><button class="askbtn" id="askbtn">${AF.icon('sparkles', 16)} AskAero</button><div class="sevchips" id="chips">${chips()}</div></div>
       </div>
       <section class="score" aria-label="Airport score card"><div class="score-h"><h3>AIRPORT SCORE CARD</h3><span class="legend"><i style="background:#ef4444"></i>Needs attention <i style="background:#f5b50b"></i>Moderate <i style="background:#34d399"></i>Good</span>
         <select id="scd" aria-label="Score card domain">${['All', 'Screening', 'Security', 'Operations'].map((d) => `<option ${G.scDom === d ? 'selected' : ''}>${d}</option>`).join('')}</select></div><div class="tiles" id="tiles">${scoreHTML()}</div></section></div>`;

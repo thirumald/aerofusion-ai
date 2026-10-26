@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   const AF = window.AF, ui = AF.ui, { esc } = ui;
-  const kpi = (label, val, delta, cls) => `<div class="kpi"><div class="kpi-l">${label}</div><div class="kpi-v">${val}</div><div class="kpi-d ${cls || 'up'}">${delta}</div></div>`;
+  const kpi = ui.kpi;
   const bars = (items, o = {}) => `<div class="hbars">${items.map((i) => {
     const pct = Math.min(100, (i.v / (o.max || 100)) * 100), col = i.col || (o.warn && i.v >= o.warn ? '#f5b50b' : '#22d3ee');
     return `<div class="hb"><span class="hb-l">${esc(i.l)}</span><span class="hb-t"><i style="width:${pct}%;background:${col}"></i>${o.limit ? `<u style="left:${(o.limit / o.max) * 100}%"></u>` : ''}</span><b>${i.t != null ? i.t : i.v}</b></div>`;

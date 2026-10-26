@@ -1,68 +1,92 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AeroFusion AI</title>
-<meta name="description" content="AeroFusion AI: a unified airport security intelligence platform. Static demo with simulated cameras, incidents and alerts.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23071012' stroke='%2322d3ee' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%2322d3ee'/%3E%3C/svg%3E">
+<meta name="description" content="AeroFusion AI: unified airport security intelligence. Real video sources, real map, digital twin and domain dashboards.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%230b1626' stroke='%2338bdf8' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%2338bdf8'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<script>try { var t = localStorage.getItem('af.theme') || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'); document.documentElement.dataset.theme = t; } catch (e) {}</script>
 <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
 <div class="app">
-  <aside class="side">
-    <div class="brand"><svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="none" stroke="#22d3ee" stroke-width="2"/><circle cx="16" cy="16" r="5" fill="#22d3ee"/><path d="M16 2v6M16 24v6M2 16h6M24 16h6" stroke="#22d3ee" stroke-width="2"/></svg>
-      <div><b>AeroFusion AI</b><span>Connecting the intelligence behind every detection</span></div></div>
+  <aside class="side" id="side">
+    <div class="brand"><svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="none" stroke="#38bdf8" stroke-width="2"/><circle cx="16" cy="16" r="5" fill="#38bdf8"/><path d="M16 2v6M16 24v6M2 16h6M24 16h6" stroke="#38bdf8" stroke-width="2"/></svg>
+      <div><b>AeroFusion AI</b><span>Airport security intelligence</span></div></div>
     <nav class="nav" aria-label="Main">
       <span class="ng">Situational</span>
-      <a href="#/geo" data-r="geo" data-t="Geo view"><i>◉</i> Geo view</a>
-      <a href="#/twin" data-r="twin" data-t="Digital twin"><i>⬡</i> Digital twin</a>
-      <a href="#/overview" data-r="overview" data-t="Command center"><i>◈</i> Command center</a>
+      <a href="#/geo" data-r="geo" data-t="Geo view"><i data-ic="globe"></i> Geo view</a>
+      <a href="#/realmap" data-r="realmap" data-t="Real map"><i data-ic="map"></i> Real map</a>
+      <a href="#/twin" data-r="twin" data-t="Digital twin"><i data-ic="cube"></i> Digital twin</a>
+      <a href="#/overview" data-r="overview" data-t="Command center"><i data-ic="dashboard"></i> Command center</a>
       <span class="ng">Domains</span>
-      <a href="#/baggage" data-r="baggage" data-t="Baggage handling"><i>▤</i> Baggage</a>
-      <a href="#/passengers" data-r="passengers" data-t="Passenger flow"><i>⇉</i> Passenger flow</a>
-      <a href="#/landside" data-r="landside" data-t="Landside traffic"><i>⛶</i> Landside traffic</a>
-      <a href="#/maintenance" data-r="maintenance" data-t="Predictive maintenance"><i>⚙</i> Predictive maintenance</a>
+      <a href="#/baggage" data-r="baggage" data-t="Baggage handling"><i data-ic="briefcase"></i> Baggage</a>
+      <a href="#/passengers" data-r="passengers" data-t="Passenger flow"><i data-ic="users"></i> Passenger flow</a>
+      <a href="#/landside" data-r="landside" data-t="Landside traffic"><i data-ic="car"></i> Landside traffic</a>
+      <a href="#/maintenance" data-r="maintenance" data-t="Predictive maintenance"><i data-ic="wrench"></i> Predictive maintenance</a>
       <span class="ng">Detection</span>
-      <a href="#/cameras" data-r="cameras" data-t="Live cameras"><i>▣</i> Live cameras</a>
-      <a href="#/checkpoint" data-r="checkpoint" data-t="Checkpoint"><i>⇄</i> Checkpoint</a>
-      <a href="#/fusion" data-r="fusion" data-t="Sensor fusion"><i>◎</i> Sensor fusion</a>
-      <a href="#/tracking" data-r="tracking" data-t="Spatiotemporal tracking"><i>⌖</i> Tracking</a>
+      <a href="#/cameras" data-r="cameras" data-t="Live cameras"><i data-ic="video"></i> Live cameras</a>
+      <a href="#/sources" data-r="sources" data-t="Video sources"><i data-ic="film"></i> Video sources</a>
+      <a href="#/checkpoint" data-r="checkpoint" data-t="Checkpoint"><i data-ic="scan"></i> Checkpoint</a>
+      <a href="#/fusion" data-r="fusion" data-t="Sensor fusion"><i data-ic="layers"></i> Sensor fusion</a>
+      <a href="#/tracking" data-r="tracking" data-t="Spatiotemporal tracking"><i data-ic="crosshair"></i> Tracking</a>
       <span class="ng">Response</span>
-      <a href="#/incidentdash" data-r="incidentdash" data-t="Incident dashboard"><i>▥</i> Incident dashboard</a>
-      <a href="#/incidents" data-r="incidents" data-t="Incidents"><i>⚑</i> Incidents <em id="nb-inc" class="nb" hidden></em></a>
-      <a href="#/alerts" data-r="alerts" data-t="Alerts"><i>✦</i> Alerts <em id="nb-alerts" class="nb" hidden></em></a>
-      <a href="#/routing" data-r="routing" data-t="Adaptive routing"><i>⇶</i> Adaptive routing</a>
-      <a href="#/governance" data-r="governance" data-t="Roadmap and governance"><i>☰</i> Roadmap &amp; governance</a>
+      <a href="#/incidentdash" data-r="incidentdash" data-t="Incident dashboard"><i data-ic="chart"></i> Incident dashboard</a>
+      <a href="#/incidents" data-r="incidents" data-t="Incidents"><i data-ic="flag"></i> Incidents <em id="nb-inc" class="nb" hidden></em></a>
+      <a href="#/alerts" data-r="alerts" data-t="Alerts"><i data-ic="bell"></i> Alerts <em id="nb-alerts" class="nb" hidden></em></a>
+      <a href="#/routing" data-r="routing" data-t="Adaptive routing"><i data-ic="route"></i> Adaptive routing</a>
+      <a href="#/governance" data-r="governance" data-t="Roadmap and governance"><i data-ic="shield"></i> Roadmap &amp; governance</a>
     </nav>
-    <p class="side-note">Demo with synthetic data. No real footage, people or airport systems.</p>
+    <div class="user" id="user">
+      <span class="avatar" aria-hidden="true">TD</span>
+      <div class="user-t"><b>Thirumal Dharmalingam</b><span>Administrator</span></div>
+      <button class="ubtn" id="user-btn" aria-haspopup="true" aria-expanded="false" aria-controls="user-menu" aria-label="Account menu" data-ic="chevron" data-size="16"></button>
+      <div class="umenu" id="user-menu" hidden>
+        <button id="um-theme"></button>
+        <a href="#/sources"><i data-ic="film" data-size="16"></i> Video sources</a>
+        <a href="#/realmap"><i data-ic="map" data-size="16"></i> Map settings</a>
+        <a href="#/governance"><i data-ic="shield" data-size="16"></i> Privacy and governance</a>
+      </div>
+    </div>
   </aside>
   <div class="main">
     <header class="top">
-      <button id="nav-toggle" class="btn menu" aria-label="Menu">☰</button>
+      <button id="nav-toggle" class="icon-btn menu" aria-label="Menu" data-ic="menu"></button>
       <h1 id="title">Geo view</h1>
-      <div class="dd"><button id="dd-btn" class="btn" aria-haspopup="true" aria-expanded="false" aria-controls="dd-menu">Dashboards ▾</button>
+      <div class="dd"><button id="dd-btn" class="btn" aria-haspopup="true" aria-expanded="false" aria-controls="dd-menu">Dashboards <span data-ic="chevron" data-size="14"></span></button>
         <div id="dd-menu" class="dd-menu" hidden>
-          <a href="#/geo">Situational awareness (geo view)</a><a href="#/twin">Digital twin</a><a href="#/overview">Command center</a><a href="#/baggage">Baggage handling</a><a href="#/passengers">Passenger flow</a><a href="#/landside">Landside traffic</a><a href="#/maintenance">Predictive maintenance</a><a href="#/incidentdash">Incident dashboard</a><a href="#/cameras">Live cameras</a><a href="#/checkpoint">Checkpoint person-to-bag</a>
-          <a href="#/fusion">Sensor fusion</a><a href="#/tracking">Spatiotemporal tracking</a><a href="#/incidents">Incident dashboard</a><a href="#/alerts">Alerts and dispatch</a>
+          <a href="#/geo">Situational awareness (geo view)</a><a href="#/realmap">Real map</a><a href="#/twin">Digital twin</a><a href="#/overview">Command center</a><a href="#/baggage">Baggage handling</a><a href="#/passengers">Passenger flow</a><a href="#/landside">Landside traffic</a><a href="#/maintenance">Predictive maintenance</a><a href="#/incidentdash">Incident dashboard</a><a href="#/cameras">Live cameras</a><a href="#/sources">Video sources</a><a href="#/checkpoint">Checkpoint person-to-bag</a>
+          <a href="#/fusion">Sensor fusion</a><a href="#/tracking">Spatiotemporal tracking</a><a href="#/incidents">Incidents</a><a href="#/alerts">Alerts and dispatch</a>
           <a href="#/routing">Adaptive routing</a><a href="#/governance">Roadmap and governance</a></div></div>
       <span class="sp"></span>
-      <span class="badge info">SIMULATION</span>
-      <button id="live" class="btn on" aria-pressed="true"><span class="dot ok"></span><span id="live-l">Live alerts: on</span></button>
+      <span class="apchip" title="Abu Dhabi International Airport"><i data-ic="plane" data-size="14"></i> AUH · Abu Dhabi</span>
+      <span class="badge info demo-b">Demo data</span>
+      <button id="live" class="btn on" aria-pressed="true" title="Generate sample alerts"><span class="dot ok"></span><span id="live-l">Live alerts: on</span></button>
+      <a class="icon-btn bell" href="#/alerts" aria-label="Alerts"><span data-ic="bell"></span><em id="nb-bell" class="nb" hidden></em></a>
+      <button id="theme" class="icon-btn" aria-label="Switch theme"></button>
       <span id="clock" class="mono mut"></span>
     </header>
     <main id="view"></main>
   </div>
 </div>
 <div id="toasts" aria-live="polite"></div>
+<script src="js/config.js"></script>
+<script src="js/icons.js"></script>
 <script src="js/sim.js"></script>
 <script src="js/data.js"></script>
 <script src="js/ui.js"></script>
+<script src="js/live-core.js"></script>
+<script src="js/live.js"></script>
 <script src="js/pages-ops.js"></script>
 <script src="js/pages-intel.js"></script>
 <script src="js/pages-geo.js"></script>
+<script src="js/twin-scenarios.js"></script>
 <script src="js/pages-twin.js"></script>
 <script src="js/pages-domain.js"></script>
 <script src="js/pages-asset.js"></script>
+<script src="js/pages-map.js"></script>
 </body>
 </html>

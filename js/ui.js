@@ -99,6 +99,14 @@
     },
   });
 
+
+  /* KPI card with an icon chosen from the label */
+  const KPI_IC = [[/bag|baggage|mishandled/i, 'briefcase'], [/passenger|terminal|arrival|forecast|express/i, 'users'], [/wait|time|dwell|resolve|acknowledge/i, 'clock'], [/alert|incident|breach|violation|critical|unattended|custody|closed/i, 'alert'], [/vehicle|kerb|car |rideshare/i, 'car'], [/service soon|watch|downtime/i, 'wrench'], [/camera|asset|availability|uptime|screened|match|accuracy/i, 'check']];
+  ui.kpi = (label, val, delta, cls, extra) => {
+    const ic = (KPI_IC.find((k) => k[0].test(label)) || [0, 'activity'])[1];
+    return `<div class="kpi"><div class="kpi-top"><div class="kpi-l">${label}</div><span class="kpi-i">${AF.icon(ic, 18)}</span></div><div class="kpi-v">${val}</div><div class="kpi-d ${cls || 'up'}">${delta}</div>${extra || ''}</div>`;
+  };
+
   /* ---------- router ---------- */
   AF.pages = {};
   let cleanups = [];
@@ -126,7 +134,8 @@
   AF.updateBadges = function () {
     const open = AF.alerts.filter((a) => a.status === 'New').length;
     const inc = AF.incidents.filter((i) => i.status === 'Open' || i.status === 'Investigating').length;
-    const a = $('#nb-alerts'), b = $('#nb-inc');
+    const a = $('#nb-alerts'), b = $('#nb-inc'), bell = $('#nb-bell');
+    if (bell) { bell.textContent = open; bell.hidden = !open; }
     if (a) { a.textContent = open; a.hidden = !open; }
     if (b) { b.textContent = inc; b.hidden = !inc; }
   };
@@ -150,12 +159,20 @@
 
   function clock() {
     const d = new Date();
-    $('#clock').textContent = d.toLocaleTimeString([], { hour12: false }) + ' local';
+    $('#clock').textContent = d.toLocaleTimeString([], { hour12: false, timeZone: AF.airport.tz }) + ' GST';
   }
 
   window.addEventListener('hashchange', route);
   function init() {
     clock(); setInterval(clock, 1000);
+    $$('[data-ic]').forEach((el) => { el.innerHTML = AF.icon(el.dataset.ic, +el.dataset.size || 18); });
+    const applyTheme = (t) => { document.documentElement.dataset.theme = t; try { localStorage.setItem('af.theme', t); } catch (e) { /* ignore */ } const b = $('#theme'); if (b) { b.innerHTML = AF.icon(t === 'dark' ? 'sun' : 'moon', 18); b.setAttribute('aria-label', t === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'); b.title = b.getAttribute('aria-label'); } const m = $('#um-theme'); if (m) m.innerHTML = AF.icon(t === 'dark' ? 'sun' : 'moon', 16) + (t === 'dark' ? ' Light theme' : ' Dark theme'); };
+    applyTheme(document.documentElement.dataset.theme || 'dark');
+    $('#theme').addEventListener('click', () => applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'));
+    $('#um-theme').addEventListener('click', () => applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'));
+    const ub = $('#user-btn'), um = $('#user-menu');
+    ub.addEventListener('click', (e) => { e.stopPropagation(); um.hidden = !um.hidden; ub.setAttribute('aria-expanded', String(!um.hidden)); });
+    document.addEventListener('click', (e) => { if (!um.contains(e.target)) { um.hidden = true; ub.setAttribute('aria-expanded', 'false'); } });
     AF.updateBadges();
     const live = $('#live');
     live.addEventListener('click', () => {
