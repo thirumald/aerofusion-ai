@@ -6,10 +6,19 @@
   const AIRPORTS = [
     { id: 'AUH', name: 'Abu Dhabi International', lat: 24.4330, lon: 54.6511 },
     { id: 'DXB', name: 'Dubai International', lat: 25.2532, lon: 55.3657 },
+    { id: 'DWC', name: 'Al Maktoum International (Dubai World Central)', lat: 24.8962, lon: 55.1614 },
+    { id: 'SHJ', name: 'Sharjah International', lat: 25.3286, lon: 55.5172 },
+    { id: 'RKT', name: 'Ras Al Khaimah International', lat: 25.6135, lon: 55.9388 },
+    { id: 'FJR', name: 'Fujairah International', lat: 25.1122, lon: 56.3240 },
+    { id: 'AAN', name: 'Al Ain International', lat: 24.2617, lon: 55.6092 },
+    { id: 'AZI', name: 'Abu Dhabi Al Bateen Executive', lat: 24.4283, lon: 54.4581 },
+    { id: 'XSB', name: 'Sir Bani Yas Island', lat: 24.2833, lon: 52.5803 },
+    { id: 'ZDY', name: 'Delma Island', lat: 24.5006, lon: 52.3358 },
     { id: 'SIN', name: 'Singapore Changi', lat: 1.3644, lon: 103.9915 },
     { id: 'LHR', name: 'London Heathrow', lat: 51.4700, lon: -0.4543 },
     { id: 'JFK', name: 'New York JFK', lat: 40.6413, lon: -73.7781 },
   ];
+  const UAE = AIRPORTS.slice(0, 9).map((a) => a.id); // the nine UAE airports; coordinates are approximate
   const STYLES = [['osm-bright', 'Bright'], ['dark-matter', 'Dark'], ['positron', 'Light'], ['klokantech-basic', 'Basic']];
   const M_PER_UNIT = 1.6; // schematic units to metres around the airport reference point
 
@@ -24,6 +33,7 @@
     view.innerHTML = `<div class="rmap"><div id="rm" class="rm-map" role="application" aria-label="Real map"></div>
       <div class="rm-panel"><h3>Real map</h3>
         <label class="sm">Airport<select id="rm-ap">${AIRPORTS.map((a) => `<option value="${a.id}" ${a.id === st.airport ? 'selected' : ''}>${a.id} · ${a.name}</option>`).join('')}</select></label>
+        <div class="btnrow"><button class="btn sm" id="rm-uae">Show all UAE airports</button></div>
         <label class="sm">Map style<select id="rm-st">${STYLES.map(([k, l]) => `<option value="${k}" ${k === st.style ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
         <label class="sm">Find a place<input id="rm-q" type="search" placeholder="Search places..." autocomplete="off"></label><div id="rm-res" class="rm-res"></div>
         <label class="chk"><input id="rm-ov" type="checkbox" ${st.overlay ? 'checked' : ''}> AeroFusion zones and cameras</label>
@@ -69,6 +79,11 @@
         }
         for (const o of AF.officers) { const [x, y] = G.OFFG[o.id]; L.marker(toLL(ap, x, y), { icon: L.divIcon({ className: 'rm-off', html: o.id, iconSize: [30, 20] }) }).bindPopup(`<b>${o.id}</b> · ${esc(o.post)}<br>${o.status}`).addTo(overlay); }
       };
+      const apLayer = L.layerGroup().addTo(map);
+      AIRPORTS.filter((a) => UAE.includes(a.id)).forEach((a) => L.marker([a.lat, a.lon], { icon: L.divIcon({ className: 'rm-off', html: a.id, iconSize: [36, 20] }) }).bindPopup(`<b>${a.id}</b> · ${esc(a.name)}<br><button class="btn sm" data-go="${a.id}">Open this airport</button>`).addTo(apLayer));
+      const goTo = (id) => { st.airport = id; $('#rm-ap').value = id; const a = AIRPORTS.find((x) => x.id === id); map.setView([a.lat, a.lon], 15); drawOverlay(); schedule(); };
+      map.on('popupopen', (e) => { const b = e.popup.getElement().querySelector('[data-go]'); if (b) b.addEventListener('click', () => goTo(b.dataset.go)); });
+      $('#rm-uae').addEventListener('click', () => map.fitBounds(L.latLngBounds(AIRPORTS.filter((a) => UAE.includes(a.id)).map((a) => [a.lat, a.lon])).pad(0.15)));
       const planeIcon = (h, ground) => L.divIcon({ className: 'rm-plane', iconSize: [26, 26], html: `<svg viewBox="0 0 24 24" width="26" height="26" style="transform:rotate(${Math.round(h || 0)}deg)"><path fill="${ground ? '#64748b' : '#0ea5e9'}" stroke="#fff" stroke-width="1" d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z"/></svg>` });
       const poll = async () => {
         planes.clearLayers(); if (!st.aircraft) { status('Aircraft layer off'); return; }
@@ -84,7 +99,7 @@
       const schedule = () => { clearInterval(timer); poll(); timer = setInterval(() => { if (document.hidden) return; poll(); }, 25000); };
       setBase(); drawOverlay(); schedule();
       ctx.cleanup(() => { clearInterval(timer); map.remove(); });
-      $('#rm-ap').addEventListener('change', (e) => { st.airport = e.target.value; const a = AIRPORTS.find((x) => x.id === st.airport); map.setView([a.lat, a.lon], 15); drawOverlay(); schedule(); });
+      $('#rm-ap').addEventListener('change', (e) => goTo(e.target.value));
       $('#rm-st').addEventListener('change', (e) => { st.style = e.target.value; setBase(); });
       $('#rm-ov').addEventListener('change', (e) => { st.overlay = e.target.checked; drawOverlay(); });
       $('#rm-ac').addEventListener('change', (e) => { st.aircraft = e.target.checked; schedule(); });

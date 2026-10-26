@@ -26,3 +26,14 @@ without audio and otherwise unchanged. Its on-screen annotations (anonymous IDs,
 alarms, secondary screening locations) were read by hand into `CAM-03.labels.json`, which drives the Checkpoint, Sensor
 fusion and Cameras pages. Confirm you have the right to publish this video before making the repository public: it was
 shared as a LinkedIn video and shows identifiable people.
+
+## Library clip
+
+`library/pedestrians.mp4` / `.webm` is OpenCV's `samples/data/vtest.avi` (https://github.com/opencv/opencv, Apache-2.0),
+resized to 768 px wide, stripped of audio and re-encoded. It shows people walking in an open plaza.
+
+## Footage that could not be found
+
+No real abandoned-bag, tailgating, fall or night-perimeter clip could be downloaded in the build environment. The
+standard abandoned-baggage test set (i-LIDS / AVSS 2007) is available from Queen Mary University of London
+(http://www.eecs.qmul.ac.uk/~andrea/avss2007_d.html); place a clip as `footage/CAM-04.mp4` and `.webm` to use it.

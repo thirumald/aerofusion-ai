@@ -18,7 +18,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: node tests/core.test.js && node tests/cp.test.js
+      - run: node tests/core.test.js && node tests/cp.test.js && node tests/platform.test.js
   deploy:
     needs: test
     runs-on: ubuntu-latest

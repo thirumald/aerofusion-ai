@@ -313,3 +313,5 @@ table.t { width: 100%; border-collapse: collapse; font-size: 13px; }
 .road { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; } .road li { padding-left: 14px; border-left: 3px solid var(--acc); }
 .t tr.grp td { background: var(--panel2); font-weight: 650; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--mut); }
 .filters.pad { padding: 10px 16px; margin: 0; }
+
+.cpv.sm { aspect-ratio: 16 / 9; } .cpv.sm video { width: 100%; height: 100%; object-fit: cover; }
