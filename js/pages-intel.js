@@ -58,7 +58,7 @@
     x.fillStyle = col; x.fillRect(px, py - 11, tw, 13); x.fillStyle = '#071012'; x.fillText(text, px + 4, py - 1);
   }
 
-  AF.pages.fusion = function (view) {
+  AF.pages.fusion = function (view, arg, ctx) {
     let ci = 0, mode = 'mmw', v = Object.assign({}, AF.fusionCases[0].v);
     view.innerHTML = `<div class="page-h"><h2>Multimodal sensor fusion</h2><p class="mut">Pick a case, then drag the sliders to see how each channel moves the fused threat score. A silo system would act on the mmWave channel alone.</p>
       <div class="chips" id="cases">${AF.fusionCases.map((c, i) => `<button class="chip ${i ? '' : 'on'}" data-i="${i}">${esc(c.title)}</button>`).join('')}</div></div>
@@ -101,6 +101,7 @@
       view.querySelectorAll('#modes button').forEach((c) => c.classList.toggle('on', c === b)); update();
     });
     sens.addEventListener('input', (e) => { if (e.target.dataset.k) { v[e.target.dataset.k] = +e.target.value; update(); } });
+    if (AF.cpFusionSection && ctx) AF.cpFusionSection(view, ctx);
     update();
   };
 
@@ -181,7 +182,7 @@
   function drawerHTML(i, stBadge) {
     return `<aside class="drawer" aria-label="Incident detail"><div class="drawer-h"><div><span class="mono">${i.id}</span> ${ui.sev(i.sev)} ${stBadge(i.status)}</div><a href="#/incidents" class="btn" aria-label="Close">Close</a></div>
       <h3>${esc(i.title)}</h3>
-      ${i.scenario ? `<div class="vid"><canvas id="dclip"></canvas><span class="vid-tag">SIMULATED CLIP</span></div>` : `<div class="noclip">Clip purged under the 72 h retention policy.<br><span class="mut sm">Only anonymous event metadata is kept.</span></div>`}
+      ${i.scenario ? `<div class="vid"><canvas id="dclip"></canvas><span class="vid-tag">SIMULATED CLIP</span></div>` : i.video ? `<video class="incvid" controls muted playsinline preload="metadata"><source src="footage/CAM-03.mp4#t=${i.video[0]}" type="video/mp4"><source src="footage/CAM-03.webm#t=${i.video[0]}" type="video/webm"></video>` : `<div class="noclip">Clip purged under the 72 h retention policy.<br><span class="mut sm">Only anonymous event metadata is kept.</span></div>`}
       <p class="sm">${esc(i.summary)}</p>
       <dl class="kv"><dt>Fused score</dt><dd>${i.fusion}</dd><dt>Zone / camera</dt><dd>${esc(ui.zoneName(i.zone))}${i.cam ? ' · ' + i.cam : ''}</dd><dt>Assigned</dt><dd>${esc(i.owner)}</dd><dt>Entities</dt><dd class="mono">${i.entities.join(' · ')}</dd></dl>
       <h4>Timeline</h4><ol class="elog">${i.timeline.map((t) => `<li class="on info"><span class="mono">${t.t}</span> ${esc(t.text)}</li>`).join('')}</ol>

@@ -179,6 +179,20 @@
     },
   ];
 
+  AF.incidents.unshift(
+    { id: 'INC-2046', title: 'Pistol flagged in BAG ID 03, body scanner alarm on ID 03', type: 'Checkpoint X-ray + body scanner', sev: 'crit', status: 'Investigating', zone: 'checkpoint', cam: 'CAM-03', scenario: null, video: [7, 30], opened: '15:02', owner: 'Officer 2', entities: ['ID 03', 'BAG ID 03', 'O-2'], fusion: 97,
+      summary: 'X-ray flagged a pistol in BAG ID 03. The owner, ID 03, was linked when the bag went on the belt. The body scanner alarmed on ID 03 and secondary screening localised the anomaly to the right thigh. From the labelled checkpoint video.',
+      timeline: tl(['15:02:08', 'X-ray flags BAG ID 03: PISTOL'], ['15:02:17', 'Body scanner alarm on ID 03'], ['15:02:26', 'Secondary screening: right thigh'], ['15:02:28', 'BAG ID 03 owner confirmed: ID 03']),
+      actions: ['Hold ID 03 and BAG ID 03 for police handover', 'Hold the queue behind a barrier for 3 minutes', 'Preserve the CAM-03 clip'] },
+    { id: 'INC-2047', title: 'Knife flagged in BAG ID 01, body scanner alarm on ID 01', type: 'Checkpoint X-ray + body scanner', sev: 'crit', status: 'Open', zone: 'checkpoint', cam: 'CAM-03', scenario: null, video: [3, 25], opened: '15:01', owner: 'Unassigned', entities: ['ID 01', 'BAG ID 01'], fusion: 96,
+      summary: 'X-ray flagged a knife in BAG ID 01 before its owner was in view. The body scanner then alarmed on ID 01, secondary screening located the anomaly at the left thigh, and the bag was linked to ID 01 at the belt.',
+      timeline: tl(['15:01:03', 'X-ray flags BAG ID 01: KNIFE (owner pending)'], ['15:01:13', 'Body scanner alarm on ID 01'], ['15:01:20', 'Secondary screening: left thigh'], ['15:01:22', 'BAG ID 01 linked to ID 01']),
+      actions: ['Detain ID 01 and BAG ID 01 for the duty officer', 'Search for a second item at the left thigh', 'Preserve the CAM-03 clip'] },
+    { id: 'INC-2048', title: 'BAG ID 02 cleared, ID 02 released', type: 'Checkpoint X-ray + body scanner', sev: 'info', status: 'Resolved (auto)', zone: 'checkpoint', cam: 'CAM-03', scenario: null, video: [0, 28], opened: '15:01', owner: 'System', entities: ['ID 02', 'BAG ID 02'], fusion: 5,
+      summary: 'BAG ID 02 cleared the X-ray, ID 02 cleared the body scanner and collected the bag. The system closed it with no manual search.',
+      timeline: tl(['15:01:05', 'X-ray clears BAG ID 02'], ['15:01:14', 'Body scanner clears ID 02'], ['15:01:26', 'Owner confirmed. Released']), actions: ['None (auto-closed)'] }
+  );
+
   /* ---------- Entities, bag matches ---------- */
   const r = rng(77);
   const zoneIds = ['curb', 'hall', 'checkpoint', 'plaza', 'corridor', 'sterile', 'gate'];

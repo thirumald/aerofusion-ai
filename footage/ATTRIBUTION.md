@@ -11,10 +11,18 @@ Changes made: each clip was trimmed, resized to the stated width, reduced to 15 
 | --- | --- | --- |
 | CAM-01 Curbside | car-detection.mp4 | vehicle dwell and traffic |
 | CAM-02 Check-in Hall B | store-aisle-detection.mp4 | crowd tokens, person-to-bag links |
-| CAM-03 Checkpoint Lane 3 | one-by-one-person-detection.mp4 | one-at-a-time screening queue |
+| CAM-03 Checkpoint Lane 3 | checkpoint screening demo video (see below) | person-to-bag correlation, X-ray, body scanner, secondary screening |
 | CAM-04 Restroom Corridor | people-detection.mp4 | corridor monitoring, unattended items |
 | CAM-05 Meeting Plaza | person-bicycle-car-detection.mp4 | open-space tracking and hand-offs |
 | CAM-06 Gate B12 | worker-zone-detection.mp4 | ground crew in a restricted zone |
 
 The footage shows unrelated places and is used only as realistic example video for the analytics.
 Replace any file with your own clip of the same name to use your own footage.
+
+## CAM-03 checkpoint video
+
+`CAM-03.mp4` / `.webm` is a checkpoint screening demo video supplied by the project owner (silent, 30 s). It was re-encoded
+without audio and otherwise unchanged. Its on-screen annotations (anonymous IDs, bag IDs, X-ray results, body scanner
+alarms, secondary screening locations) were read by hand into `CAM-03.labels.json`, which drives the Checkpoint, Sensor
+fusion and Cameras pages. Confirm you have the right to publish this video before making the repository public: it was
+shared as a LinkedIn video and shows identifiable people.

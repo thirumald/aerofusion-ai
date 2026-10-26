@@ -109,7 +109,15 @@
         if (this.dead) return;
         const v = this.video, t0 = performance.now();
         try {
-          if (this.needDetect() && v.readyState >= 2 && !v.paused) {
+          if (this.needDetect() && this.cam === 'CAM-03' && this.b.type === 'footage' && AF.cpState && v.readyState >= 2 && !v.paused) {
+            const ct = v.currentTime; this.mode = 'labels';
+            if (ct < this.lastT - 0.5) this.cpAlerted = {};
+            const cs = AF.cpState(ct);
+            this.view = { persons: cs.people.filter((p) => p.visible).map((p) => ({ id: p.id, bbox: [0, 0, 1, 1], risk: p.fused })), bags: cs.bags.filter((b) => b.seen).map((b) => ({ id: b.id, bbox: [0, 0, 1, 1], owner: b.owner, awaySec: 0, unattended: !!(b.result && b.result !== 'CLEAR'), custody: false, hidden: false })), vehicles: [] };
+            this.vw = 0;
+            AF.cpLabels.events.forEach((e, i) => { if (e.t > this.lastT && e.t <= ct) this.onCpEvent(e, i); });
+            this.lastT = ct; const nowMs = performance.now(); if (this.lastLoop) this.fps = 0.8 * this.fps + 0.2 * (1000 / Math.max(1, nowMs - this.lastLoop)); this.lastLoop = nowMs;
+          } else if (this.needDetect() && v.readyState >= 2 && !v.paused) {
             let dets = null;
             if (this.annot && this.b.type === 'sample') {
               dets = this.annotAt(v.currentTime); this.mode = 'annotation';
@@ -136,6 +144,14 @@
       while (lo < hi) { const m = (lo + hi + 1) >> 1; if (fr[m].t <= t) lo = m; else hi = m - 1; }
       this.vw = this.annot.w; this.vh = this.annot.h;
       return fr[lo].d.map((d) => ({ cls: d[0], bbox: [d[1], d[2], d[3], d[4]], score: 0.9 }));
+    }
+    onCpEvent(e, i) {
+      this.events.unshift({ type: 'cp', ev: e, at: Date.now() }); if (this.events.length > 40) this.events.pop();
+      this.cpAlerted = this.cpAlerted || {};
+      if ((e.type === 'xray_flag' || e.type === 'scanner_alarm') && !this.cpAlerted[i]) {
+        this.cpAlerted[i] = true;
+        AF.pushAlert({ sev: 'crit', type: e.type === 'xray_flag' ? 'X-ray flag' : 'Body scanner alarm', zone: 'checkpoint', cam: this.cam, text: e.text + ' (checkpoint video)', scenario: null, live: true });
+      }
     }
     onEvent(e) {
       const rec = Object.assign({ at: Date.now() }, e);

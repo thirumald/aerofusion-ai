@@ -293,3 +293,14 @@ table.t { width: 100%; border-collapse: collapse; font-size: 13px; }
 .tbanner { position: absolute; left: 50%; top: 52px; transform: translateX(-50%); z-index: 4; max-width: calc(100% - 24px); padding: 8px 14px; border-radius: 8px; background: rgba(6, 14, 20, .94); border: 1px solid #2a6f7a; border-left: 4px solid var(--info); font-size: 13px; color: #e6f2f0; white-space: normal; text-align: left; } .tbanner.warn { border-left-color: var(--warn); } .tbanner.crit { border-left-color: var(--crit); } .tbanner.ok { border-left-color: var(--ok); }
 .kp3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 8px 0; text-align: center; } .kp3 b { display: block; font-size: 18px; } .kp3 span { font-size: 11px; color: var(--mut); }
 .tpanel .tl { max-height: 320px; }
+
+/* checkpoint video and fusion from labelled data */
+.tabrow { margin: 0 0 12px; } .cpv { position: relative; background: #000; aspect-ratio: 1138 / 640; } .cpv video { width: 100%; height: 100%; display: block; object-fit: contain; } .cpv-err { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; padding: 20px; color: #fff; background: rgba(0, 0, 0, .8); }
+.gantt { width: 100%; height: auto; display: block; cursor: pointer; } .gantt .gl { stroke: var(--line); } .gantt .ax { fill: var(--mut); font-size: 10px; } .gantt .gt2 { fill: var(--txt); font-size: 9.5px; pointer-events: none; }
+.bagrow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 7px 0; border-bottom: 1px solid var(--line); } .bagrow:last-child { border: 0; }
+.fcards { display: grid; gap: 10px; align-content: start; } .fcard { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--panel2); } .fcard.off { opacity: .5; }
+.fc-h { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; } .fc-n { margin-left: auto; font-size: 20px; font-weight: 700; }
+.fc-r { display: grid; grid-template-columns: minmax(120px, 1fr) 90px 34px; gap: 8px; align-items: center; padding: 2px 0; } .rbar.wide2 { width: 100%; }
+.incvid { width: 100%; border-radius: 8px; margin: 8px 0; background: #000; max-height: 320px; }
+
+[hidden] { display: none !important; }

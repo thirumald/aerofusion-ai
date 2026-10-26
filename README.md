@@ -24,7 +24,8 @@ Serve over http (not `file://`) so video, analytics and the map can load. It dep
 
 | Part | Status |
 | --- | --- |
-| Camera video | **Real footage** (CC BY 4.0, see `footage/ATTRIBUTION.md`), or your own webcam, file or stream URL |
+| Checkpoint video (`CAM-03`) | **Real video with labels read from it** (`footage/CAM-03.labels.json`): IDs, X-ray results, scanner alarms and secondary checks are exactly what the video shows; fusion scores derived from them are illustrative |
+| Other camera video | **Real footage** (CC BY 4.0, see `footage/ATTRIBUTION.md`), or your own webcam, file or stream URL |
 | People, bag and vehicle detection | **Real**: COCO-SSD runs in your browser on the video |
 | Tokens, bag-to-owner links, unattended and dwell timers | **Real** logic (`js/live-core.js`, unit tested) |
 | Map | **Real** map tiles (Geoapify or OpenStreetMap) and **live aircraft** from the OpenSky Network |
@@ -42,7 +43,9 @@ Serve over http (not `file://`) so video, analytics and the map can load. It dep
 | | Command center | KPIs, risk map, active alerts, camera wall |
 | Domains | Baggage, Passenger flow, Landside traffic, Predictive maintenance | Domain dashboards with charts, heatmap, custody chain and work orders |
 | Detection | Live cameras, Video sources | Real video per camera with live analytics; choose footage, webcam, file or stream |
-| | Checkpoint, Sensor fusion, Tracking | Person-to-bag correlation, multimodal fusion, spatiotemporal journeys |
+| | Checkpoint | A real labelled screening video: IDs, bag X-ray results, body scanner alarms, secondary screening, with panels and a persistent-ID timeline that follow the video |
+| | Sensor fusion | Interactive channel fusion plus a per-person fusion built from the same labelled video |
+| | Tracking | Spatiotemporal journeys and rules |
 | Response | Incident dashboard, Incidents, Alerts, Adaptive routing, Roadmap & governance | SLA clocks, workflow, silent dispatch, lane routing, guardrails |
 
 The sidebar has a profile card at the bottom (Thirumal Dharmalingam) with a theme switch. Light and dark themes
@@ -85,8 +88,12 @@ tools/make-samples.js renders the synthetic clips (Playwright and ffmpeg)
 
 ## Tests
 
-`node tests/core.test.js` checks the tracker with synthetic detections: stable ids, bag ownership, unattended and dwell
-events, and custody change.
+* `node tests/core.test.js` checks the tracker with synthetic detections: stable ids, bag ownership, unattended and dwell
+  events, and custody change.
+* `node tests/cp.test.js` checks the model built from the labelled checkpoint video: owner links, X-ray flags, fusion
+  decisions and identity timing.
+
+The Pages workflow runs both before it deploys.
 
 ## Credits
 
