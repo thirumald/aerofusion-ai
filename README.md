@@ -40,6 +40,7 @@ Serve over http (not `file://`) so video, analytics and the map can load. It dep
 | Situational | Geo view | Schematic airport map, severity chips, zone and camera panel with AI advisory, score card, AskAero assistant |
 | | Real map | Leaflet map of AUH (or DXB, SIN, LHR, JFK) with the AeroFusion overlay and live aircraft |
 | | Digital twin | Isometric 3D airport with camera cones, live tokens, risk/occupancy/HVAC/energy overlays, and seven **critical use cases** you can play back: unattended bag, bag hand-off, CT alert, kerb abandonment, tailgating, perimeter breach, checkpoint overload |
+| | Platform blueprint | The integrated security platform as a page: architecture, journey graph with consent toggles, 81 searchable problems and solutions marked demo or design only, fusion use cases, phased roadmap and KPIs |
 | | Command center | KPIs, risk map, active alerts, camera wall |
 | Domains | Baggage, Passenger flow, Landside traffic, Predictive maintenance | Domain dashboards with charts, heatmap, custody chain and work orders |
 | Detection | Live cameras, Video sources | Real video per camera with live analytics; choose footage, webcam, file or stream |
@@ -79,7 +80,8 @@ js/data.js            zones, cameras, alerts, incidents, tracks, fusion cases
 js/ui.js              router, charts, KPI cards, toasts, theme, live alert generator
 js/live-core.js       tracker: tokens, bag-to-owner association, unattended and dwell logic (Node-testable)
 js/live.js            video sources, detection loop, source picker, Video sources page
-js/pages-*.js         pages (ops, intel, geo, twin, domain, asset, map)
+js/pages-*.js         pages (ops, intel, checkpoint, geo, twin, domain, asset, map, blueprint)
+js/blueprint-data.js  the platform blueprint as data
 footage/              real camera clips plus ATTRIBUTION.md
 samples/              synthetic rendered clips with box annotations
 vendor/               Leaflet, TensorFlow.js, COCO-SSD, hls.js (see vendor/README.md)

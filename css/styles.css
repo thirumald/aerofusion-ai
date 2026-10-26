@@ -304,3 +304,12 @@ table.t { width: 100%; border-collapse: collapse; font-size: 13px; }
 .incvid { width: 100%; border-radius: 8px; margin: 8px 0; background: #000; max-height: 320px; }
 
 [hidden] { display: none !important; }
+
+/* platform blueprint */
+.core-p { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; } .core-p p { margin: 0; flex: 1; min-width: 240px; }
+.arch2 { width: 100%; height: auto; display: block; } .arch2 .a2h { font: 700 12px var(--font); letter-spacing: .08em; } .arch2 .a2c { fill: var(--panel); stroke: var(--line); } .arch2 .a2t { fill: var(--txt); font-size: 12.5px; }
+.jr { display: grid; grid-template-columns: 130px 1fr; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 13px; } .jk { color: var(--mut); } .jv.off { color: var(--mut); font-style: italic; }
+.fuse-l { display: grid; gap: 10px; } .fz { display: grid; gap: 4px; padding-bottom: 10px; border-bottom: 1px solid var(--line); justify-items: start; } .fz:last-child { border: 0; }
+.road { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; } .road li { padding-left: 14px; border-left: 3px solid var(--acc); }
+.t tr.grp td { background: var(--panel2); font-weight: 650; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--mut); }
+.filters.pad { padding: 10px 16px; margin: 0; }
