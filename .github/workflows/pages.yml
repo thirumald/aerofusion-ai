@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 # One Pages site per repo, so two branches share it: main at the site root, develop under /develop/.
 on:
   push:
-    branches: [main, develop]
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
