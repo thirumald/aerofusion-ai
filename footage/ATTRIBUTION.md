@@ -37,3 +37,9 @@ resized to 768 px wide, stripped of audio and re-encoded. It shows people walkin
 No real abandoned-bag, tailgating, fall or night-perimeter clip could be downloaded in the build environment. The
 standard abandoned-baggage test set (i-LIDS / AVSS 2007) is available from Queen Mary University of London
 (http://www.eecs.qmul.ac.uk/~andrea/avss2007_d.html); place a clip as `footage/CAM-04.mp4` and `.webm` to use it.
+
+## Additional library clips
+
+`footage/library/corridor-pair`, `table-dwell` and `bottles` come from intel-iot-devkit/sample-videos (CC BY 4.0):
+face-demographics-walking, one-by-one-person-detection and bottle-detection. They were trimmed, resized to 480 px wide,
+reduced to 15 fps, stripped of audio and re-encoded (H.264 MP4 and VP9 WebM). Faces are not analysed.
