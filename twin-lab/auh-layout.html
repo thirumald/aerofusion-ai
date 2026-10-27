@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AUH Digital Twin Layout</title>
+<style>
+:root{--bg:#070d14;--panel:#0e1722;--line:#1f2f42;--txt:#dbe6f2;--mut:#8197ad;--acc:#38bdf8;--ok:#34d399;--warn:#f5b50b;--crit:#ef4444;font:13px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+*{box-sizing:border-box}html,body{margin:0;height:100%;background:var(--bg);color:var(--txt)}
+.app{display:grid;grid-template-columns:260px 1fr 340px;grid-template-rows:auto 1fr;height:100%;min-height:640px}
+header{grid-column:1/4;display:flex;gap:12px;align-items:center;padding:10px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+header h1{font-size:15px;margin:0;letter-spacing:.06em}header .sub{color:var(--mut);font-size:12px}header .sp{flex:1}
+button,label.btn{background:var(--panel);color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:6px 10px;cursor:pointer;font:inherit}
+button.on{background:var(--acc);color:#04202c;border-color:var(--acc);font-weight:600}button:hover{border-color:var(--acc)}
+aside{overflow:auto;padding:12px;border-right:1px solid var(--line)}aside.r{border-right:0;border-left:1px solid var(--line)}
+h2{font-size:11px;letter-spacing:.1em;color:var(--mut);margin:14px 0 6px;text-transform:uppercase}h2:first-child{margin-top:0}
+.lv{display:block;width:100%;text-align:left;margin-bottom:4px}.lv small{display:block;color:inherit;opacity:.75}
+.chk{display:flex;gap:6px;align-items:center;margin:3px 0}
+main{position:relative;overflow:hidden;background:radial-gradient(circle at 50% 40%,#0c1b2a,#070d14)}
+svg{width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+.tip{position:absolute;pointer-events:none;background:#0b1520ee;border:1px solid var(--line);border-radius:6px;padding:6px 8px;max-width:280px;display:none;font-size:12px}
+table{width:100%;border-collapse:collapse;font-size:12px}td,th{padding:3px 4px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{color:var(--mut);font-weight:500}
+td.n{text-align:right;font-variant-numeric:tabular-nums}.P{color:var(--ok)}.E{color:var(--warn)}
+.cal label{display:block;margin:4px 0;color:var(--mut)}.cal input[type=range]{width:100%}
+.note{color:var(--mut);font-size:12px}
+@media(max-width:900px){.app{grid-template-columns:1fr;grid-template-rows:auto auto 60vh auto}header{grid-column:1}aside,aside.r{border:0}}
+</style></head><body>
+<div class="app">
+<header><h1>ZAYED INTERNATIONAL (AUH) · DIGITAL TWIN LAYOUT</h1><span class="sub">Local metric frame · origin Terminal A centre · <span class="P">P</span> published · <span class="E">E</span> estimate</span><span class="sp"></span>
+<button id="bGeo">Export GeoJSON</button><button id="bJson">Export JSON</button></header>
+<aside><h2>View</h2><div id="views"></div><h2>Layers</h2><div id="layers"></div>
+<h2>Imagery calibration</h2><div class="cal"><label class="btn" style="display:block;text-align:center">Load map screenshot<input id="img" type="file" accept="image/*" hidden></label>
+<label>Opacity<input id="iop" type="range" min="0" max="100" value="55"></label><label>Scale (m per pixel)<input id="isc" type="range" min="0.2" max="12" step="0.05" value="2"></label>
+<label>Offset X<input id="iox" type="range" min="-3000" max="3000" value="0"></label><label>Offset Y<input id="ioy" type="range" min="-3000" max="3000" value="0"></label><label>Rotation<input id="irot" type="range" min="-180" max="180" step="0.5" value="0"></label>
+<p class="note">Load a satellite screenshot, then match it to the runways using the sliders. Items are in metres, so edit <code>auh-layout-data.js</code> to the traced values.</p></div></aside>
+<main id="stage"><svg id="svg"></svg><div class="tip" id="tip"></div></main>
+<aside class="r"><div id="side"></div></aside>
+</div>
+<script src="auh-layout-data.js"></script>
+<script>
+(function(){'use strict';
+const A=window.AUH,$=(s)=>document.querySelector(s),svg=$('#svg'),NS='http://www.w3.org/2000/svg';
+const COL={runway:'#4b5563',taxiway:'#374151',apron:'#1f2a37',cargo:'#3b2f55',road:'#334155',parking:'#1e3a5f',transit:'#0f766e',legacy:'#3f3f46',service:'#7c5a10',hall:'#0e3a52',checkin:'#38bdf8',security:'#f5b50b',immigration:'#a78bfa',reclaim:'#34d399',customs:'#fb923c',bhs:'#14b8a6',lounge:'#c084fc',retail:'#f472b6',kerb:'#e5e7eb',pier:'#164e63',gate:'#22d3ee',boundary:'none'};
+const S={view:'airport',layers:{boundary:1,airside:1,landside:1,terminal:1,labels:1,dims:1,grid:1,gates:1},vb:null,img:null};
+const fmt=(n)=>Math.round(n).toLocaleString('en-US');
+const el=(t,a,p)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);(p||svg).appendChild(e);return e;};
+const pts=(poly)=>poly.map(p=>p[0].toFixed(1)+','+(-p[1]).toFixed(1)).join(' ');
+const bbOf=(polys)=>{const b=polys.map(A.bbox);return{x0:Math.min(...b.map(q=>q.x0)),x1:Math.max(...b.map(q=>q.x1)),y0:Math.min(...b.map(q=>q.y0)),y1:Math.max(...b.map(q=>q.y1))};};
+
+/* controls */
+const views=[['airport','Airport overview',A.BOUNDARY.area?'boundary, runways, aprons, landside':''],['terminal','Terminal A footprint','all levels overlaid'],...A.LEVELS.map(l=>[l.id,l.name,'+'+l.elev+' m · floor-to-floor '+l.h+' m'])];
+$('#views').innerHTML=views.map(v=>`<button class="lv" data-v="${v[0]}">${v[1]}<small>${v[2]}</small></button>`).join('');
+$('#layers').innerHTML=Object.keys(S.layers).map(k=>`<label class="chk"><input type="checkbox" data-l="${k}" checked> ${k}</label>`).join('');
+document.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>{S.view=b.dataset.v;S.vb=null;draw();});
+document.querySelectorAll('[data-l]').forEach(c=>c.onchange=()=>{S.layers[c.dataset.l]=c.checked?1:0;draw();});
+
+function tip(e,o){const t=$('#tip');if(!o){t.style.display='none';return;}const r=$('#stage').getBoundingClientRect();
+ t.innerHTML=`<b>${o.name}</b><br>${o.bb?fmt(o.bb.x1-o.bb.x0)+' × '+fmt(o.bb.y1-o.bb.y0)+' m (bounding box)<br>':''}${o.area?'area '+fmt(o.area)+' m²<br>':''}<span class="${o.src}">${o.src==='P'?'published':'estimate'}</span> ${o.note||''}`;
+ t.style.display='block';t.style.left=Math.min(e.clientX-r.left+12,r.width-290)+'px';t.style.top=(e.clientY-r.top+12)+'px';}
+function poly(o,fill,op,stroke){const p=el('polygon',{points:pts(o.poly),fill:fill,'fill-opacity':op,stroke:stroke||'#9fb4c8','stroke-opacity':.7,'stroke-width':stroke?2:.8,'vector-effect':'non-scaling-stroke'});
+ p.addEventListener('mousemove',e=>tip(e,o));p.addEventListener('mouseleave',()=>tip(0));return p;}
+function label(x,y,txt,size,fill){const t=el('text',{x:x,y:-y,'font-size':size,fill:fill||'#dbe6f2','text-anchor':'middle','paint-order':'stroke',stroke:'#070d14','stroke-width':size/5,'pointer-events':'none'});t.textContent=txt;}
+function dimLine(x0,y0,x1,y1,txt,size){const l=el('line',{x1:x0,y1:-y0,x2:x1,y2:-y1,stroke:'#f5b50b','stroke-width':1.2,'vector-effect':'non-scaling-stroke'});
+ [[x0,y0],[x1,y1]].forEach(p=>{const d=size*.5;el('line',{x1:p[0]-d*(y1-y0===0?0:1),y1:-p[1]-d*(x1-x0===0?0:1),x2:p[0]+d*(y1-y0===0?0:1),y2:-p[1]+d*(x1-x0===0?0:1),stroke:'#f5b50b','stroke-width':1.2,'vector-effect':'non-scaling-stroke'});});
+ const t=el('text',{x:(x0+x1)/2,y:-(y0+y1)/2-size*.4,'font-size':size,fill:'#f5b50b','text-anchor':'middle','paint-order':'stroke',stroke:'#070d14','stroke-width':size/5,'pointer-events':'none'});t.textContent=txt;}
+function scaleBar(b,size){const L=b.x1-b.x0>3000?1000:b.x1-b.x0>1200?500:100,x=b.x0+size*2,y=b.y0+size*2;
+ el('line',{x1:x,y1:-y,x2:x+L,y2:-y,stroke:'#dbe6f2','stroke-width':3,'vector-effect':'non-scaling-stroke'});label(x+L/2,y+size*1.2,L+' m',size);}
+function grid(b,step){for(let x=Math.ceil(b.x0/step)*step;x<=b.x1;x+=step)el('line',{x1:x,y1:-b.y1,x2:x,y2:-b.y0,stroke:'#17283a','stroke-width':.6,'vector-effect':'non-scaling-stroke'});
+ for(let y=Math.ceil(b.y0/step)*step;y<=b.y1;y+=step)el('line',{x1:b.x0,y1:-y,x2:b.x1,y2:-y,stroke:'#17283a','stroke-width':.6,'vector-effect':'non-scaling-stroke'});}
+
+function drawImage(){if(!S.img)return;const sc=+$('#isc').value,w=S.img.w*sc,h=S.img.h*sc;
+ el('image',{href:S.img.src,x:-w/2+(+$('#iox').value),y:-h/2-(+$('#ioy').value),width:w,height:h,opacity:$('#iop').value/100,transform:`rotate(${$('#irot').value} ${+$('#iox').value} ${-$('#ioy').value})`,'pointer-events':'none'});}
+
+function terminalShapes(levels){levels.forEach(l=>l.outline.forEach((p,i)=>el('polygon',{points:pts(p),fill:'#0e3a52','fill-opacity':levels.length>1?.18:.35,stroke:'#38bdf8','stroke-opacity':.5,'stroke-width':1,'vector-effect':'non-scaling-stroke'})));}
+
+function draw(){svg.innerHTML='';document.querySelectorAll('[data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===S.view));
+ let b,size,g;const lvl=A.LEVELS.find(l=>l.id===S.view);
+ if(S.view==='airport'){b={x0:-2700,x1:2700,y0:-1700,y1:1700};size=70;}
+ else if(S.view==='terminal'){b={x0:-900,x1:900,y0:-500,y1:500};size=14;}
+ else if(S.view==='L4'){b={x0:-560,x1:560,y0:-380,y1:380};size=9;}
+ else{b={x0:-230,x1:230,y0:-190,y1:190};size=5.5;}
+ const pad=size*8;svg.setAttribute('viewBox',`${b.x0-pad} ${-b.y1-pad} ${b.x1-b.x0+2*pad} ${b.y1-b.y0+2*pad}`);svg.setAttribute('preserveAspectRatio','xMidYMid meet');
+ if(S.layers.grid)grid(b,S.view==='airport'?250:S.view==='terminal'?50:S.view==='L4'?25:10);
+ drawImage();
+ if(S.view==='airport'){
+  if(S.layers.boundary){poly(A.BOUNDARY,'none',0,'#ef4444').setAttribute('stroke-dasharray','12 8');label(0,A.BOUNDARY.poly[0][1]-60,'AIRPORT BOUNDARY (indicative) · '+fmt(A.BOUNDARY.area/10000)+' ha',size*.9,'#ef4444');}
+  if(S.layers.airside)A.AIRSIDE.forEach(o=>{poly(o,COL[o.type]||'#333',.85);if(S.layers.labels&&['runway','apron','cargo'].includes(o.type))label(o.poly.reduce((s,p)=>s+p[0],0)/4,o.poly.reduce((s,p)=>s+p[1],0)/4,o.name,size*.8);});
+  if(S.layers.landside)A.LANDSIDE.forEach(o=>{poly(o,COL[o.type]||'#333',.85);if(S.layers.labels)label(o.poly.reduce((s,p)=>s+p[0],0)/4,o.poly.reduce((s,p)=>s+p[1],0)/4+(o.type==='road'?0:0),o.name.replace(/ \(.*/,''),size*.7);});
+  if(S.layers.terminal){terminalShapes([lvl||A.LEVELS[3]]);label(0,A.HALL_D/2+size*2.5,'TERMINAL A',size,'#38bdf8');}
+  if(S.layers.dims){dimLine(-2050,-RW()-90,2050,-RW()-90,'Runway length ≈ 4,100 m (P)',size);dimLine(2600,A_SEP(-1),2600,A_SEP(1),'Runway spacing ≈ '+fmt(A_SEP(1)-A_SEP(-1))+' m (E)',size*.9);dimLine(-2500,-1560,2500,-1560,'Boundary width '+fmt(5000)+' m (E)',size*.9);}
+ } else {
+  const ls=S.view==='terminal'?A.LEVELS:[lvl];terminalShapes(ls);
+  if(S.view==='terminal'){A.PIERS.forEach(p=>poly(p,'#164e63',.35));if(S.layers.labels)A.PIERS.forEach(p=>{const c=p.poly.reduce((s,q)=>[s[0]+q[0]/4,s[1]+q[1]/4],[0,0]);label(c[0],c[1],p.name,size*1.1);});
+   poly({name:'Central hall (roof span 319 m, P)',poly:A.HALL,src:'P',area:Math.round(A.area(A.HALL)),bb:A.bbox(A.HALL)},'#0e3a52',.4);
+   if(S.layers.dims){dimLine(-A.HALL_W/2-30,-A.HALL_D/2,-A.HALL_W/2-30,A.HALL_D/2,'319 m roof span (P)',size);dimLine(-A.HALL_W/2,A.HALL_D/2+25,A.HALL_W/2,A.HALL_D/2+25,A.HALL_W+' m hall depth (E)',size);
+    const a=35*Math.PI/180,nx=-Math.sin(a)*75,ny=Math.cos(a)*75;dimLine(60*Math.cos(a)+nx,60*Math.sin(a)+ny,A.PIER_LEN*Math.cos(a)+nx,A.PIER_LEN*Math.sin(a)+ny,(A.PIER_LEN-60)+' m pier from hall (E)',size);}
+  } else {
+   lvl.zones.filter(z=>z.poly&&!(z.type==='gate')).forEach(z=>{poly(z,COL[z.type]||'#444',z.type==='checkin'||z.type==='security'?.85:.35);});
+   if(S.layers.gates)lvl.zones.filter(z=>z.pt).forEach(z=>{const c=el('circle',{cx:z.pt[0],cy:-z.pt[1],r:size*.9,fill:'#22d3ee','fill-opacity':.85});c.addEventListener('mousemove',e=>tip(e,z));c.addEventListener('mouseleave',()=>tip(0));});
+   if(S.layers.labels)lvl.zones.filter(z=>z.poly&&['hall','bhs','reclaim','customs','immigration','lounge','retail','service','kerb'].includes(z.type)).forEach(z=>{const c=z.poly.reduce((s,q)=>[s[0]+q[0]/4,s[1]+q[1]/4],[0,0]);label(c[0],c[1],z.name,size*.9);});
+   if(S.layers.dims){const t=lvl.zones.filter(z=>['bhs','hall','reclaim','security'].includes(z.type));t.slice(0,3).forEach(z=>{dimLine(z.bb.x0,z.bb.y0-size*3,z.bb.x1,z.bb.y0-size*3,fmt(z.bb.x1-z.bb.x0)+' m',size);dimLine(z.bb.x1+size*3,z.bb.y0,z.bb.x1+size*3,z.bb.y1,fmt(z.bb.y1-z.bb.y0)+' m',size);});}
+  }
+ }
+ scaleBar(b,size);side(lvl);}
+const RW=()=>A.AIRSIDE[1].poly[0][1]*-1-0;
+function A_SEP(s){return s>0?A.AIRSIDE[0].poly[0][1]+30:A.AIRSIDE[1].poly[2][1]-30;}
+
+function side(lvl){let h='';
+ h+=`<h2>Published figures</h2><table>${A.PUBLISHED.map(p=>`<tr><td>${p.k}</td><td>${p.v}</td></tr>`).join('')}</table><p class="note">Sources: ${Object.entries(A.SOURCES).map(([k,u])=>`<a style="color:var(--acc)" target="_blank" rel="noopener" href="${u}">${k}</a>`).join(' · ')}</p>`;
+ h+=`<h2>Floor dimensions (modelled)</h2><table><tr><th>Level</th><th>Elev</th><th>Floor-to-floor</th><th>GFA m²</th></tr>${A.LEVELS.map(l=>`<tr${lvl&&lvl.id===l.id?' style="background:#13304a"':''}><td>${l.id}</td><td class="n">+${l.elev} m</td><td class="n">${l.h} m</td><td class="n">${fmt(l.gfa)}</td></tr>`).join('')}<tr><td colspan="3"><b>Model total</b></td><td class="n"><b>${fmt(A.GFA_MODEL)}</b></td></tr><tr><td colspan="3">Published</td><td class="n">${fmt(A.GFA_PUBLISHED)}</td></tr><tr><td colspan="3">Difference</td><td class="n">${(A.GFA_MODEL/A.GFA_PUBLISHED*100-100).toFixed(1)}%</td></tr></table><p class="note">Elevations and heights are estimates (top of roof +52 m published maximum). Level count and use are assumptions to validate against BIM.</p>`;
+ const rows=S.view==='airport'?[A.BOUNDARY,...A.AIRSIDE,...A.LANDSIDE]:lvl?lvl.zones.filter(z=>z.poly&&z.type!=='checkin'):[...A.PIERS,{name:'Central hall',poly:A.HALL,src:'P',bb:A.bbox(A.HALL),area:Math.round(A.area(A.HALL))}];
+ h+=`<h2>${S.view==='airport'?'Boundary and zones':'Zones on this view'}</h2><table><tr><th>Item</th><th>W × D m</th><th>m²</th><th></th></tr>${rows.map(z=>{const bb=z.bb||A.bbox(z.poly);const ar=z.area||Math.round(A.area(z.poly));return`<tr><td>${z.name}</td><td class="n">${fmt(bb.x1-bb.x0)} × ${fmt(bb.y1-bb.y0)}</td><td class="n">${fmt(ar)}</td><td class="${z.src}">${z.src}</td></tr>`}).join('')}</table>`;
+ if(lvl){const c=lvl.zones.filter(z=>z.type==='checkin').length,g=lvl.zones.filter(z=>z.type==='gate').length,s=lvl.zones.filter(z=>z.type==='security').length;
+  h+=`<p class="note">${c?`Check-in: ${c} islands × 13 = ${c*13} counters (P 156). `:''}${s?`Security: ${s} checkpoints × 34 = ${s*34} lanes (P 136). `:''}${g?`Stands: ${g} (P 65).`:''}</p>`;}
+ $('#side').innerHTML=h;}
+
+/* export */
+function dl(name,text,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
+$('#bGeo').onclick=()=>dl('auh-layout.geojson',JSON.stringify(A.geojson(),null,1),'application/geo+json');
+$('#bJson').onclick=()=>dl('auh-layout.json',JSON.stringify({origin:A.ORIGIN,published:A.PUBLISHED,levels:A.LEVELS,airside:A.AIRSIDE,landside:A.LANDSIDE,boundary:A.BOUNDARY},null,1),'application/json');
+$('#img').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{const i=new Image();i.onload=()=>{S.img={src:r.result,w:i.width,h:i.height};draw();};i.src=r.result;};r.readAsDataURL(f);};
+['iop','isc','iox','ioy','irot'].forEach(id=>$('#'+id).oninput=draw);
+/* pan / zoom */
+let drag=null;svg.addEventListener('wheel',e=>{e.preventDefault();const v=svg.viewBox.baseVal,k=e.deltaY>0?1.12:.89,p=pt(e);svg.setAttribute('viewBox',`${p.x-(p.x-v.x)*k} ${p.y-(p.y-v.y)*k} ${v.width*k} ${v.height*k}`);},{passive:false});
+function pt(e){const q=svg.createSVGPoint();q.x=e.clientX;q.y=e.clientY;return q.matrixTransform(svg.getScreenCTM().inverse());}
+svg.addEventListener('pointerdown',e=>{drag={p:pt(e)};svg.setPointerCapture(e.pointerId);});
+svg.addEventListener('pointermove',e=>{if(!drag)return;const p=pt(e),v=svg.viewBox.baseVal;svg.setAttribute('viewBox',`${v.x-(p.x-drag.p.x)} ${v.y-(p.y-drag.p.y)} ${v.width} ${v.height}`);});
+svg.addEventListener('pointerup',()=>{drag=null;});
+const q=location.hash.slice(1);if(views.some(v=>v[0]===q))S.view=q;
+window.addEventListener('hashchange',()=>{const h=location.hash.slice(1);if(views.some(v=>v[0]===h)){S.view=h;draw();}});
+draw();window.__auh={S,draw};
+})();
+</script></body></html>

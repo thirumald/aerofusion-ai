@@ -6,4 +6,8 @@
     view.classList.add('geo');
     view.innerHTML = '<iframe class="tl-frame" src="twin-lab/?embed=1" title="Terminal Twin Lab" allow="fullscreen" loading="eager"></iframe>';
   };
+  AF.pages.auhlayout = function (view) {
+    view.classList.add('geo');
+    view.innerHTML = '<iframe class="tl-frame" src="twin-lab/auh-layout.html" title="AUH digital twin layout" loading="eager"></iframe>';
+  };
 })();
