@@ -14,8 +14,17 @@
   ].map((r) => { const segs = r.pts.slice(1).map((p, i) => Math.hypot(p[0] - r.pts[i][0], p[1] - r.pts[i][1])); return Object.assign(r, { segs, L: segs.reduce((a, b) => a + b, 0) }); });
   const at = (r, t) => { let d = t * r.L; for (let i = 0; i < r.segs.length; i++) { if (d <= r.segs[i]) { const f = d / r.segs[i], a = r.pts[i], b = r.pts[i + 1]; return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f]; } d -= r.segs[i]; } return r.pts[r.pts.length - 1]; };
 
+  /* plain simulation: n passengers with schematic world positions {x, y, dep}; step(dt seconds) */
+  function sim(n) {
+    const rng = AF.rng ? AF.rng(23) : Math.random, pax = Array.from({ length: n || 70 }, (_, i) => ({ r: i % ROUTES.length, t: rng(), v: 0.012 + rng() * 0.02, j: [(rng() - 0.5) * 14, (rng() - 0.5) * 12], x: 0, y: 0, dep: true }));
+    const upd = () => pax.forEach((p) => { const q = at(ROUTES[p.r], p.t); p.x = q[0] + p.j[0]; p.y = q[1] + p.j[1]; p.dep = ROUTES[p.r].dep; });
+    upd();
+    return { pax, step(dt) { pax.forEach((p) => { p.t += p.v * dt; if (p.t >= 1) { p.t -= 1; p.r = Math.floor(Math.random() * ROUTES.length); } }); upd(); } };
+  }
+
   /* attach(getSvg, ctx, n): getSvg returns the live map svg (or null); n passengers */
   AF.crowd = {
+    sim,
     attach(getSvg, ctx, n) {
       const rng = AF.rng ? AF.rng(23) : Math.random, pax = Array.from({ length: n || 70 }, (_, i) => ({ r: i % ROUTES.length, t: rng(), v: 0.012 + rng() * 0.02, j: [(rng() - 0.5) * 14, (rng() - 0.5) * 12] }));
       let raf = 0, last = performance.now(), svg = null, g = null, dots = [];

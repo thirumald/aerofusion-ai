@@ -38,6 +38,7 @@
         <label class="sm">Find a place<input id="rm-q" type="search" placeholder="Search places..." autocomplete="off"></label><div id="rm-res" class="rm-res"></div>
         <label class="chk"><input id="rm-ov" type="checkbox" ${st.overlay ? 'checked' : ''}> AeroFusion zones and cameras</label>
         <label class="chk"><input id="rm-ac" type="checkbox" ${st.aircraft ? 'checked' : ''}> Live aircraft (OpenSky)</label>
+        <label class="chk"><input id="rm-pp" type="checkbox" ${st.people !== false ? 'checked' : ''}> Passengers (live movement)</label>
         <p class="sm mut" id="rm-status">Starting...</p>
         <details class="sm"><summary>Map key and notes</summary><label>Geoapify API key<input id="rm-key" type="password" placeholder="paste key" value="${esc(getKey())}" autocomplete="off"></label>
           <div class="btnrow"><button class="btn sm pri" id="rm-save">Save</button></div>
@@ -79,9 +80,36 @@
         }
         for (const o of AF.officers) { const [x, y] = G.OFFG[o.id]; L.marker(toLL(ap, x, y), { icon: L.divIcon({ className: 'rm-off', html: o.id, iconSize: [30, 20] }) }).bindPopup(`<b>${o.id}</b> · ${esc(o.post)}<br>${o.status}`).addTo(overlay); }
       };
+      /* passengers: at AUH the Terminal A model at its real position, elsewhere the schematic crowd around the airport */
+      const crowdLayer = L.layerGroup().addTo(map); let crowdTimer = null;
+      const needAUH = () => (window.AUH && window.AUH.Pax ? Promise.resolve() : AF.live.loadScript('twin-lab/auh-layout-data.js').then(() => AF.live.loadScript('twin-lab/auh-pax.js')));
+      const drawCrowd = () => {
+        clearInterval(crowdTimer); crowdLayer.clearLayers(); if (st.people === false) return;
+        const ap = AIRPORTS.find((a) => a.id === st.airport), rend = L.canvas({ padding: 0.5 }), dot = (dep) => L.circleMarker([0, 0], { renderer: rend, radius: 3, stroke: true, color: '#04202c', weight: 0.8, fillColor: dep ? '#38bdf8' : '#fbbf24', fillOpacity: 0.95, interactive: false });
+        const run = (stepFn, list, pos) => {
+          const marks = new Map();
+          crowdTimer = setInterval(() => {
+            if (document.hidden) return; stepFn(0.12);
+            const live = new Set();
+            list().forEach((a) => { live.add(a.id); let m = marks.get(a.id); if (!m) { m = dot(a.dep); m.addTo(crowdLayer); marks.set(a.id, m); } m.setLatLng(pos(a)); });
+            marks.forEach((m, id) => { if (!live.has(id)) { crowdLayer.removeLayer(m); marks.delete(id); } });
+          }, 120);
+        };
+        if (ap.id === 'AUH') {
+          needAUH().then(() => {
+            if (st.airport !== 'AUH' || st.people === false) return;
+            const A = window.AUH, px = A.Pax.create({ seed: 5, speed: 12 });
+            A.LEVELS[3].outline.forEach((o) => L.polygon(o.map((p) => { const q = A.toLatLon(p[0], p[1]); return [q[1], q[0]]; }), { color: '#38bdf8', weight: 1, fillColor: '#38bdf8', fillOpacity: 0.08, interactive: false }).addTo(crowdLayer));
+            run((dt) => px.step(dt), () => px.agents.map((a) => ({ id: a.id, dep: a.kind === 'dep', x: a.x, y: a.y })), (a) => { const q = A.toLatLon(a.x, a.y); return [q[1], q[0]]; });
+          }).catch(() => {});
+        } else {
+          const cs = AF.crowd.sim(70);
+          run((dt) => cs.step(dt * 8), () => cs.pax.map((p, i) => ({ id: i, dep: p.dep, x: p.x, y: p.y })), (a) => toLL(ap, a.x, a.y));
+        }
+      };
       const apLayer = L.layerGroup().addTo(map);
       AIRPORTS.filter((a) => UAE.includes(a.id)).forEach((a) => L.marker([a.lat, a.lon], { icon: L.divIcon({ className: 'rm-off', html: a.id, iconSize: [36, 20] }) }).bindPopup(`<b>${a.id}</b> · ${esc(a.name)}<br><button class="btn sm" data-go="${a.id}">Open this airport</button>`).addTo(apLayer));
-      const goTo = (id) => { st.airport = id; $('#rm-ap').value = id; const a = AIRPORTS.find((x) => x.id === id); map.setView([a.lat, a.lon], 15); drawOverlay(); schedule(); };
+      const goTo = (id) => { st.airport = id; $('#rm-ap').value = id; const a = AIRPORTS.find((x) => x.id === id); map.setView([a.lat, a.lon], 15); drawOverlay(); drawCrowd(); schedule(); };
       map.on('popupopen', (e) => { const b = e.popup.getElement().querySelector('[data-go]'); if (b) b.addEventListener('click', () => goTo(b.dataset.go)); });
       $('#rm-uae').addEventListener('click', () => map.fitBounds(L.latLngBounds(AIRPORTS.filter((a) => UAE.includes(a.id)).map((a) => [a.lat, a.lon])).pad(0.15)));
       const planeIcon = (h, ground) => L.divIcon({ className: 'rm-plane', iconSize: [26, 26], html: `<svg viewBox="0 0 24 24" width="26" height="26" style="transform:rotate(${Math.round(h || 0)}deg)"><path fill="${ground ? '#64748b' : '#0ea5e9'}" stroke="#fff" stroke-width="1" d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z"/></svg>` });
@@ -97,8 +125,9 @@
         } catch (e) { status('Live aircraft unavailable (' + esc(e.message || 'network') + '). Retrying.'); }
       };
       const schedule = () => { clearInterval(timer); poll(); timer = setInterval(() => { if (document.hidden) return; poll(); }, 25000); };
-      setBase(); drawOverlay(); schedule();
-      ctx.cleanup(() => { clearInterval(timer); map.remove(); });
+      setBase(); drawOverlay(); drawCrowd(); schedule();
+      ctx.cleanup(() => { clearInterval(timer); clearInterval(crowdTimer); map.remove(); });
+      $('#rm-pp').addEventListener('change', (e) => { st.people = e.target.checked; drawCrowd(); });
       $('#rm-ap').addEventListener('change', (e) => goTo(e.target.value));
       $('#rm-st').addEventListener('change', (e) => { st.style = e.target.value; setBase(); });
       $('#rm-ov').addEventListener('change', (e) => { st.overlay = e.target.checked; drawOverlay(); });

@@ -45,6 +45,7 @@
       <div class="kpis" id="jkpi"></div>
       <nav class="chips jtabs" aria-label="Journey views">${TABS.map((x) => `<a class="chip${x[0] === tab ? ' on' : ''}" href="#/journey/${x[0]}"${x[0] === tab ? ' aria-current="page"' : ''}>${x[1]}${x[0] === 'alerts' ? ' <em class="nb" id="jnb" hidden></em>' : ''}</a>`).join('')}</nav>
       <div id="jtool"></div>
+      <div id="j3dwrap"></div>
       <div id="jbody"></div>
       <div id="jdrawer"></div>
       <p class="sm mut jfoot">Simulated data for the PoC demonstration. Wait targets and pier capacities are placeholders until confirmed at M2.</p>`;
@@ -57,8 +58,25 @@
       tool.innerHTML = `<div class="chips jfil" id="jfil"></div>`;
     }
 
+    /* 3D terminal with the tracked passengers as people (map tab only; lives outside #jbody so it is not rebuilt on every tick) */
+    let j3d = null;
+    const SCOL = { 'Confirmed passenger': 0x34d399, 'Unmatched passenger': 0xf5b50b, 'Non-travelling visitor': 0xc084fc, Unverified: 0x60a5fa, 'Not enrolled': 0x94a3b8 };
+    const crowdAt = (W, t) => {
+      const out = [];
+      for (const f of W) {
+        if (t >= f.std) continue;
+        const pier = Math.max(0, 'ABCD'.indexOf(String(f.pier)[0]));
+        for (const p of f.people) { const z = J.zoneAt(p, t); if (z < 0 || z > 5) continue; out.push({ id: p.jid, zone: z, pier, color: SCOL[J.statusAt(p, t)] }); }
+      }
+      return out;
+    };
+    if (tab === 'map') {
+      $('#j3dwrap').innerHTML = '<section class="card"><div class="card-h"><h3>Terminal A 3D · tracked passengers</h3><span class="mut sm"><i class="jk" style="background:#34d399"></i> confirmed &nbsp;<i class="jk" style="background:#60a5fa"></i> unverified &nbsp;<i class="jk" style="background:#f5b50b"></i> unmatched &nbsp;<i class="jk" style="background:#c084fc"></i> visitor</span></div><div id="j3d" style="position:relative;height:420px;border-radius:8px;overflow:hidden;background:#070d14"></div></section>';
+      if (window.TerminalA3D) window.TerminalA3D.mount($('#j3d'), { mode: 'compact', driven: true, level: 'all', dist: 620 }).then((a) => { j3d = a; a.setRoof(false); ctx.cleanup(() => a.dispose()); a.setCrowd(crowdAt(world(), S.t)); }).catch(() => { $('#j3d').textContent = '3D view unavailable'; });
+    }
     function paint() {
       const W = world(), t = S.t;
+      if (j3d) j3d.setCrowd(crowdAt(W, t));
       const alerts = J.alertsAt(W, t), open = alerts.filter((a) => !S.acked.has(a.id));
       $('#jclk').textContent = fmt(t);
       $('#jdot').className = 'dot ' + (S.playing ? 'ok' : '');

@@ -351,3 +351,5 @@ table.t { width: 100%; border-collapse: collapse; font-size: 13px; }
 .tl-pane .tl-frame { height: 100%; min-height: 0; }
 .tl-cases .twin { height: 100%; min-height: 0; }
 @media (max-width: 1100px) { .tl-pane.tl-cases { height: auto; } .tl-cases .twin { height: auto; } }
+
+.jk { display: inline-block; width: 9px; height: 9px; border-radius: 50%; vertical-align: middle; }

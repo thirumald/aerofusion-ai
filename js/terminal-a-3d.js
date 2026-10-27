@@ -112,8 +112,21 @@
     if (opts.surroundings === false) surG.visible = false;
 
     /* ---- live passengers (instanced torso, head, legs and bags; shared simulation in auh-pax.js) ---- */
-    const sim = A.Pax.create({ seed: opts.seed || 7, scale: compact ? 0.55 : 1, speed: opts.speed || 12 });
-    const MAXP = 900, PS = { on: opts.people !== false, speed: sim.speed };
+    const sim = opts.driven ? { agents: [], stats: { total: 0, dep: 0, arr: 0, secQ: 0, secWaitMin: 0 }, speed: 1, step() {} } : A.Pax.create({ seed: opts.seed || 7, scale: compact ? 0.55 : 1, speed: opts.speed || 12 });
+    const MAXP = 900, PS = { on: opts.people !== false, speed: sim.speed, driven: !!opts.driven };
+    /* driven mode: an outside simulation (passenger journey tracking) says which zone each tracked passenger is in; they glide to a stable spot there */
+    const drv = new Map(); let drvList = [];
+    const hash = (id) => { let h = 2166136261; for (let i = 0; i < id.length; i++) { h ^= id.charCodeAt(i); h = Math.imul(h, 16777619); } return [((h >>> 0) % 10007) / 10007, ((Math.imul(h, 0x9e3779b1) >>> 0) % 10007) / 10007]; };
+    const ZL3 = A.Pax.Z.L3, ZL4 = A.Pax.Z.L4, PANG = [35, -35, 145, -145].map((d) => d * Math.PI / 180);
+    function zoneTarget(it) {
+      const [u, v] = hash(it.id), z = it.zone, pa = PANG[Math.max(0, Math.min(3, it.pier || 0))], ax = Math.cos(pa), ay = Math.sin(pa);
+      if (z === 0) return [-85 + u * 90, -150 + v * 300, ZL3];
+      if (z === 1) return [78 + u * 10, -110 + v * 220, ZL3];
+      if (z === 2) return [46 + u * 30, -150 + v * 300, ZL3];
+      if (z === 3) { const d = 80 + u * 340, l = (v - 0.5) * 50; return [d * ax - l * ay, d * ay + l * ax, ZL4]; }
+      if (z === 4) { const d = 380 + u * 80, l = (v - 0.5) * 60; return [d * ax - l * ay, d * ay + l * ax, ZL4]; }
+      return [250 + u * 180, -330 + v * 70, 0.3];
+    }
     const peopleG = new T.Group(); root3.add(peopleG);
     const pm = (geo, col) => { const m = new T.InstancedMesh(geo, new T.MeshStandardMaterial({ color: col, roughness: 0.9 }), MAXP); m.frustumCulled = false; m.count = 0; m.instanceColor = new T.InstancedBufferAttribute(new Float32Array(MAXP * 3), 3); m.instanceMatrix.setUsage(T.DynamicDrawUsage); peopleG.add(m); return m; };
     const torso = pm(new T.CylinderGeometry(0.28, 0.32, 0.72, 8).translate(0, 1.12, 0), 0xffffff);
@@ -122,9 +135,13 @@
     const bag = pm(new T.BoxGeometry(0.3, 0.42, 0.2).translate(0.38, 0.42, 0), 0x374151);
     const tmpC = new T.Color(), pmat = new T.Matrix4(), pq = new T.Quaternion(), ps = new T.Vector3(), pp = new T.Vector3(), PUP = new T.Vector3(0, 1, 0);
     const lvBand = (z) => { let k = 0; A.LEVELS.forEach((l, i) => { if (z >= l.elev + 0.2) k = i; }); return k; };
+    function glide(dt) {
+      const k = 1 - Math.exp(-dt * 1.6);
+      drvList.forEach((a) => { const dx = a.tx - a.x, dy = a.ty - a.y, d = Math.hypot(dx, dy); a.state = d > 1 ? 'walk' : 'wait'; if (d > 0.3) { a.hx = dx / d; a.hy = dy / d; } a.x += dx * k; a.y += dy * k; a.z += (a.tz - a.z) * k; });
+    }
     function drawPeople(t) {
       peopleG.visible = PS.on; if (!PS.on) return;
-      const ag = sim.agents, sel = A.LEVELS.findIndex((l) => l.id === S.level), k = Math.max(1.6, Math.min(4.5, C.dist / 300));
+      const ag = PS.driven ? drvList : sim.agents, sel = A.LEVELS.findIndex((l) => l.id === S.level), k = Math.max(PS.driven ? 2.6 : 1.6, Math.min(4.5, C.dist / 300));
       let n = 0;
       for (let i = 0; i < ag.length && n < MAXP; i++) {
         const a = ag[i], b = lvBand(a.z);
@@ -135,7 +152,7 @@
         ps.set(k, k * (1 + gait * 0.06), k); pmat.compose(pp, pq, ps); legs.setMatrixAt(n, pmat);
         if (a.bag) { ps.set(k, k, k); pmat.compose(pp, pq, ps); } else { ps.set(0.0001, 0.0001, 0.0001); pmat.compose(pp, pq, ps); }
         bag.setMatrixAt(n, pmat);
-        tmpC.setHex(A.Pax.COLS[a.col]); torso.setColorAt(n, tmpC);
+        tmpC.setHex(a.hex || A.Pax.COLS[a.col]); torso.setColorAt(n, tmpC);
         n++;
       }
       [torso, head, legs, bag].forEach((m) => { m.count = n; m.instanceMatrix.needsUpdate = true; });
@@ -143,7 +160,7 @@
     }
 
     /* ---- orbit camera ---- */
-    const C = { yaw: -0.75, pitch: 0.62, dist: compact ? 1500 : 1300, tx: 0, ty: 15, tz: 0, auto: !!opts.autorotate };
+    const C = { yaw: -0.75, pitch: 0.62, dist: opts.dist || (compact ? 1500 : 1300), tx: 0, ty: 15, tz: 0, auto: !!opts.autorotate };
     const place = () => { const cp = Math.cos(C.pitch); cam.position.set(C.tx + C.dist * cp * Math.sin(C.yaw), C.ty + C.dist * Math.sin(C.pitch), C.tz + C.dist * cp * Math.cos(C.yaw)); cam.lookAt(C.tx, C.ty, C.tz); };
     let drag = null;
     cv.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, y: e.clientY, pan: e.button === 2 || e.shiftKey }; C.auto = false; cv.setPointerCapture(e.pointerId); cv.style.cursor = 'grabbing'; });
@@ -190,7 +207,7 @@
         info.innerHTML = z ? '<b>' + z.name + '</b><br>' + (z.area ? Math.round(z.area).toLocaleString('en-US') + ' m² · ' : '') + (z.src === 'P' ? 'published' : 'estimate') : summary(); });
     }
     const baseInfo = () => { const l = A.LEVELS.find((x) => x.id === S.level); return l ? '<b>' + l.name + '</b><br>+' + l.elev + ' m · floor-to-floor ' + l.h + ' m · ' + Math.round(l.gfa).toLocaleString('en-US') + ' m² GFA (est.)' : '<b>Terminal A, X-shaped, 4 piers</b><br>roof span 319 m · max height 52 m · 65 stands · model GFA ' + Math.round(A.GFA_MODEL).toLocaleString('en-US') + ' m²'; };
-    const paxInfo = () => { const st = sim.stats; return '<br><span style="color:#22d3ee">LIVE</span> ' + st.total + ' passengers · ' + st.dep + ' departing · ' + st.arr + ' arriving · security queue ' + st.secQ + ' (~' + st.secWaitMin + ' min)'; };
+    const paxInfo = () => { if (PS.driven) return '<br><span style="color:#22d3ee">LIVE</span> ' + drvList.length + ' tracked passengers in the terminal';  const st = sim.stats; return '<br><span style="color:#22d3ee">LIVE</span> ' + st.total + ' passengers · ' + st.dep + ' departing · ' + st.arr + ' arriving · security queue ' + st.secQ + ' (~' + st.secWaitMin + ' min)'; };
     const lvInfo = () => baseInfo() + (PS.on ? paxInfo() : '');
     const summary = lvInfo;
     let infoAt = 0;
@@ -203,12 +220,23 @@
       if (dead) return; if (!el.isConnected) { api.dispose(); return; }
       raf = requestAnimationFrame(loop); const dt = Math.min(0.1, (t - last) / 1000); last = t;
       if (C.auto) C.yaw += dt * 0.12;
-      if (PS.on) { sim.speed = PS.speed; sim.step(dt); }
+      if (PS.driven) glide(dt); else if (PS.on) { sim.speed = PS.speed; sim.step(dt); }
       place(); drawPeople(t / 1000); updateInfo(); r.render(scene, cam);
     })(last);
     const api = {
       scene, camera: cam, state: S, view: C, sim, people: PS,
       setLevel(id) { S.level = id; apply(); }, setExplode(v) { S.explode = !!v; apply(); }, setRoof(v) { S.roof = !!v; apply(); }, setSurroundings(v) { S.sur = !!v; apply(); }, setPeople(v) { PS.on = !!v; apply(); },
+      setCrowd(items) {
+        const seen = new Set(), cap = MAXP, step = Math.max(1, Math.ceil(items.length / cap));
+        items.forEach((it, i) => {
+          if (i % step || it.zone < 0 || it.zone > 5) return; seen.add(it.id);
+          const tg = zoneTarget(it); let a = drv.get(it.id);
+          if (!a) { a = { id: it.id, x: -150, y: tg[1], z: ZL3, hx: 1, hy: 0, state: 'walk', ph: hash(it.id)[0] * 6.28, bag: hash(it.id)[1] < 0.7, col: 0 }; drv.set(it.id, a); }
+          a.tx = tg[0]; a.ty = tg[1]; a.tz = tg[2]; a.hex = it.color || 0x7dd3fc; a.zone = it.zone;
+        });
+        drv.forEach((a, id) => { if (!seen.has(id)) drv.delete(id); });
+        drvList = [...drv.values()];
+      },
       dispose() { dead = true; cancelAnimationFrame(raf); ro.disconnect(); r.dispose(); },
     };
     apply();
