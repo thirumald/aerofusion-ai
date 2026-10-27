@@ -27,7 +27,19 @@
     const T = root.THREE, A = root.AUH, compact = opts.mode === 'compact';
     el.classList.add('ta3d'); if (getComputedStyle(el).position === 'static') el.style.position = 'relative';
     const cv = document.createElement('canvas'); cv.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab'; el.appendChild(cv);
-    const r = new T.WebGLRenderer({ canvas: cv, antialias: true, alpha: false }); r.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+    let r;
+    try { r = new T.WebGLRenderer({ canvas: cv, antialias: true, alpha: false }); } catch (e) { r = null; }
+    if (!r || !r.getContext()) {
+      cv.remove();
+      const m = document.createElement('div');
+      m.style.cssText = 'position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:20px;text-align:center;color:#dbe6f2;background:#070d14;font:13px/1.5 system-ui,sans-serif';
+      m.innerHTML = '<b>3D view needs WebGL, which this browser has turned off or does not support.</b><span style="color:#8197ad;max-width:460px">Turn on hardware acceleration in the browser settings (Chrome: Settings, System, Use graphics acceleration when available), or open chrome://gpu to see why WebGL is blocked. Then reload this page.</span><a href="' + BASE + 'twin-lab/auh-layout.html#terminal" style="color:#38bdf8">Open the 2D layout instead</a>';
+      el.appendChild(m);
+      return { webgl: false, dispose() {}, setLevel() {}, setExplode() {}, setRoof() {}, setSurroundings() {} };
+    }
+    r.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+    cv.addEventListener('webglcontextlost', (e) => { e.preventDefault(); });
+    cv.addEventListener('webglcontextrestored', () => { apply(); });
     const scene = new T.Scene(); scene.background = new T.Color(0x070d14); scene.fog = new T.Fog(0x070d14, 2500, 9000);
     const cam = new T.PerspectiveCamera(45, 1, 2, 20000);
     scene.add(new T.HemisphereLight(0xbcd8f0, 0x0a1220, 0.9));
