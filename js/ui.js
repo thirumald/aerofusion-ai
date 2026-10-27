@@ -116,6 +116,8 @@
   };
   function route() {
     const [, name = 'geo', arg] = location.hash.split('/');
+    const ALIAS = { twin: (a) => '#/twinlab/' + (a || 'live'), indoor: () => '#/twinlab/3d' };
+    if (ALIAS[name]) { location.replace(ALIAS[name](arg)); return; }
     const page = AF.pages[name] || AF.pages.geo;
     cleanups.forEach((f) => { try { f(); } catch (e) { /* ignore */ } });
     cleanups = [];

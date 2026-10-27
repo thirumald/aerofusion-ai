@@ -34,12 +34,13 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}.P{color:var(--ok)}.E{co
 <aside class="r"><div id="side"></div></aside>
 </div>
 <script src="auh-layout-data.js"></script>
+<script src="auh-pax.js"></script>
 <script src="../js/terminal-a-3d.js"></script>
 <script>
 (function(){'use strict';
 const A=window.AUH,$=(s)=>document.querySelector(s),svg=$('#svg'),NS='http://www.w3.org/2000/svg';
 const COL={runway:'#4b5563',taxiway:'#374151',apron:'#1f2a37',cargo:'#3b2f55',road:'#334155',parking:'#1e3a5f',transit:'#0f766e',legacy:'#3f3f46',service:'#7c5a10',hall:'#0e3a52',checkin:'#38bdf8',security:'#f5b50b',immigration:'#a78bfa',reclaim:'#34d399',customs:'#fb923c',bhs:'#14b8a6',lounge:'#c084fc',retail:'#f472b6',kerb:'#e5e7eb',pier:'#164e63',gate:'#22d3ee',boundary:'none'};
-const S={view:'3d',layers:{boundary:1,airside:1,landside:1,terminal:1,labels:1,dims:1,grid:1,gates:1},vb:null,img:null};
+const S={view:'3d',layers:{people:1,boundary:1,airside:1,landside:1,terminal:1,labels:1,dims:1,grid:1,gates:1},vb:null,img:null};
 const fmt=(n)=>Math.round(n).toLocaleString('en-US');
 const el=(t,a,p)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);(p||svg).appendChild(e);return e;};
 const pts=(poly)=>poly.map(p=>p[0].toFixed(1)+','+(-p[1]).toFixed(1)).join(' ');
@@ -101,7 +102,18 @@ function draw(){show3d(S.view==='3d');document.querySelectorAll('[data-v]').forE
    if(S.layers.dims){const t=lvl.zones.filter(z=>['bhs','hall','reclaim','security'].includes(z.type));t.slice(0,3).forEach(z=>{dimLine(z.bb.x0,z.bb.y0-size*3,z.bb.x1,z.bb.y0-size*3,fmt(z.bb.x1-z.bb.x0)+' m',size);dimLine(z.bb.x1+size*3,z.bb.y0,z.bb.x1+size*3,z.bb.y1,fmt(z.bb.y1-z.bb.y0)+' m',size);});}
   }
  }
- scaleBar(b,size);side(lvl);}
+ scaleBar(b,size);side(lvl);setupPax(size,lvl);}
+/* live passengers on the 2D plans (shared simulation) */
+const pax=A.Pax.create({seed:7,scale:1,speed:12});let paxG=null,paxPool=[],paxLvl=null,paxLast=performance.now();
+function setupPax(size,lvl){paxPool=[];paxG=null;paxLvl=lvl||null;if(S.view==='airport')return;paxG=el('g',{id:'pax','pointer-events':'none'});}
+function paxFrame(now){requestAnimationFrame(paxFrame);const dt=Math.min(.1,(now-paxLast)/1000);paxLast=now;if(document.hidden||S.view==='3d')return;pax.step(dt);
+ if(!paxG||!S.layers.people||S.view==='3d'||S.view==='airport'){if(paxG)paxG.style.display='none';return;}paxG.style.display='';
+ const r=S.view==='terminal'?1.3:.9,ag=pax.agents;let n=0;
+ for(let i=0;i<ag.length;i++){const a=ag[i];if(paxLvl&&Math.abs(a.z-(paxLvl.elev+.7))>2.5)continue;
+  let c=paxPool[n];if(!c){c=document.createElementNS(NS,'circle');paxG.appendChild(c);paxPool[n]=c;}
+  c.setAttribute('cx',a.x.toFixed(1));c.setAttribute('cy',(-a.y).toFixed(1));c.setAttribute('r',r*(S.view==='terminal'?3:1.6));c.setAttribute('fill',a.kind==='dep'?'#7dd3fc':'#fbbf24');c.style.display='';n++;}
+ for(let i=n;i<paxPool.length;i++)paxPool[i].style.display='none';}
+requestAnimationFrame(paxFrame);
 const RW=()=>A.AIRSIDE[1].poly[0][1]*-1-0;
 function A_SEP(s){return s>0?A.AIRSIDE[0].poly[0][1]+30:A.AIRSIDE[1].poly[2][1]-30;}
 

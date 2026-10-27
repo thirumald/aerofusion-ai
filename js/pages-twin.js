@@ -1,4 +1,5 @@
-/* AeroFusion AI - Digital twin: isometric 3D airport with module overlays and a systems panel. */
+/* AeroFusion AI - critical use cases for the Terminal Twin Lab: isometric airport playing the seven scripted scenarios (unattended bag, hand-off, tailgating and more).
+   The generic module overlays moved into the live twin; this keeps only the use cases and the live risk view. */
 (function () {
   'use strict';
   const AF = window.AF, ui = AF.ui, { esc } = ui;
@@ -26,16 +27,14 @@
   };
   const colOf = (b) => (b < 0.33 ? '#34d399' : b < 0.66 ? '#f5b50b' : '#ef4444');
 
-  AF.pages.twin = function (view, arg, ctx) {
+  AF.twinCases = function (view, arg, ctx) {
     view.classList.add('geo');
     const S = { mod: 'risk', scope: 'all', sel: null, hover: null, tokHover: null, scn: null, layers: { fov: true, tokens: true, trails: true } };
     view.innerHTML = `<div class="twin">
-      <aside class="tmods"><div class="tm-h">MODULES</div>
-        <div class="tm-g">TERMINAL OPERATIONS</div>${Object.entries(MODS).map(([k, m]) => `<button class="tm ${k === 'risk' ? 'on' : ''}" data-m="${k}">${m.name}</button>`).join('')}
+      <aside class="tmods"><div class="tm-h">USE CASES</div>
         <div class="tm-g">CRITICAL USE CASES</div>${AF.twinScenarios.map((s) => `<button class="tm sc" data-sc="${s.id}"><span class="sd ${s.sev}"></span>${esc(s.title)}</button>`).join('')}<button class="tm sc on" data-sc="">Live operations view</button>
         <div class="tm-g">LAYERS</div>
         <label class="tm lay"><input type="checkbox" data-l="fov" checked> Camera field of view</label><label class="tm lay"><input type="checkbox" data-l="tokens" checked> Live tokens</label><label class="tm lay"><input type="checkbox" data-l="trails" checked> Risk trails</label>
-        <div class="tm-g">DOMAIN DASHBOARDS</div><a class="tm" href="#/baggage">Baggage handling ›</a><a class="tm" href="#/passengers">Passenger flow ›</a><a class="tm" href="#/landside">Landside traffic ›</a>
         <div class="tm-g">RELATED</div><a class="tm" href="#/geo">Geo view ›</a><a class="tm" href="#/alerts">Alerts and dispatch ›</a></aside>
       <div class="tcenter"><div class="ttabs" role="tablist"><button class="on" data-s="all">AIRPORT</button><button data-s="term">TERMINAL</button><button data-s="air">AIRSIDE</button></div>
         <canvas id="tc" aria-label="3D digital twin of the airport"></canvas><div class="ttip" id="ttip" hidden></div>

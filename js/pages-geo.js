@@ -150,6 +150,7 @@
 
   /* ---------- page ---------- */
   AF.pages.geo = function (view, arg, ctx) {
+    if (AF.crowd) AF.crowd.attach(() => view.querySelector('#gsvg'), ctx, 70);
     view.classList.add('geo');
     const chips = () => ['crit', 'warn', 'info'].map((s) => {
       const n = AF.alerts.filter((a) => a.sev === s && a.status !== 'Auto-cleared' && a.status !== 'Resolved').length;

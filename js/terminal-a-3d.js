@@ -11,7 +11,7 @@
   const deps = () => Promise.all([
     loadScript(BASE + 'vendor/three/three.min.js', () => root.THREE),
     loadScript(BASE + 'twin-lab/auh-layout-data.js', () => root.AUH),
-  ]);
+  ]).then(() => loadScript(BASE + 'twin-lab/auh-pax.js', () => root.AUH.Pax));
 
   const ZH = { checkin: 1.1, security: 0.9, bhs: 0.4, kerb: 0.6, immigration: 0.8, reclaim: 0.6, customs: 0.6, lounge: 0.5, retail: 0.5, service: 0.5 };
   const ZC = { checkin: 0x38bdf8, security: 0xf5b50b, bhs: 0x14b8a6, kerb: 0xe5e7eb, immigration: 0xa78bfa, reclaim: 0x34d399, customs: 0xfb923c, lounge: 0xc084fc, retail: 0xf472b6, service: 0x9a7b2e };
@@ -111,6 +111,37 @@
     });
     if (opts.surroundings === false) surG.visible = false;
 
+    /* ---- live passengers (instanced torso, head, legs and bags; shared simulation in auh-pax.js) ---- */
+    const sim = A.Pax.create({ seed: opts.seed || 7, scale: compact ? 0.55 : 1, speed: opts.speed || 12 });
+    const MAXP = 900, PS = { on: opts.people !== false, speed: sim.speed };
+    const peopleG = new T.Group(); root3.add(peopleG);
+    const pm = (geo, col) => { const m = new T.InstancedMesh(geo, new T.MeshStandardMaterial({ color: col, roughness: 0.9 }), MAXP); m.frustumCulled = false; m.count = 0; m.instanceColor = new T.InstancedBufferAttribute(new Float32Array(MAXP * 3), 3); m.instanceMatrix.setUsage(T.DynamicDrawUsage); peopleG.add(m); return m; };
+    const torso = pm(new T.CylinderGeometry(0.28, 0.32, 0.72, 8).translate(0, 1.12, 0), 0xffffff);
+    const head = pm(new T.SphereGeometry(0.17, 8, 6).translate(0, 1.64, 0), 0xe8c3a0);
+    const legs = pm(new T.CylinderGeometry(0.2, 0.17, 0.76, 6).translate(0, 0.38, 0), 0x1e293b);
+    const bag = pm(new T.BoxGeometry(0.3, 0.42, 0.2).translate(0.38, 0.42, 0), 0x374151);
+    const tmpC = new T.Color(), pmat = new T.Matrix4(), pq = new T.Quaternion(), ps = new T.Vector3(), pp = new T.Vector3(), PUP = new T.Vector3(0, 1, 0);
+    const lvBand = (z) => { let k = 0; A.LEVELS.forEach((l, i) => { if (z >= l.elev + 0.2) k = i; }); return k; };
+    function drawPeople(t) {
+      peopleG.visible = PS.on; if (!PS.on) return;
+      const ag = sim.agents, sel = A.LEVELS.findIndex((l) => l.id === S.level), k = Math.max(1.6, Math.min(4.5, C.dist / 300));
+      let n = 0;
+      for (let i = 0; i < ag.length && n < MAXP; i++) {
+        const a = ag[i], b = lvBand(a.z);
+        if (sel >= 0 && b > sel) continue;
+        const gait = a.state === 'walk' ? Math.sin(t * 9 + a.ph) : 0, y = a.z + (S.explode ? b * 26 : 0) + Math.abs(gait) * 0.05 * k;
+        pq.setFromAxisAngle(PUP, Math.atan2(a.hy, a.hx)); pp.set(a.x, y, -a.y);
+        ps.set(k, k, k); pmat.compose(pp, pq, ps); torso.setMatrixAt(n, pmat); head.setMatrixAt(n, pmat);
+        ps.set(k, k * (1 + gait * 0.06), k); pmat.compose(pp, pq, ps); legs.setMatrixAt(n, pmat);
+        if (a.bag) { ps.set(k, k, k); pmat.compose(pp, pq, ps); } else { ps.set(0.0001, 0.0001, 0.0001); pmat.compose(pp, pq, ps); }
+        bag.setMatrixAt(n, pmat);
+        tmpC.setHex(A.Pax.COLS[a.col]); torso.setColorAt(n, tmpC);
+        n++;
+      }
+      [torso, head, legs, bag].forEach((m) => { m.count = n; m.instanceMatrix.needsUpdate = true; });
+      if (torso.instanceColor) torso.instanceColor.needsUpdate = true;
+    }
+
     /* ---- orbit camera ---- */
     const C = { yaw: -0.75, pitch: 0.62, dist: compact ? 1500 : 1300, tx: 0, ty: 15, tz: 0, auto: !!opts.autorotate };
     const place = () => { const cp = Math.cos(C.pitch); cam.position.set(C.tx + C.dist * cp * Math.sin(C.yaw), C.ty + C.dist * Math.sin(C.pitch), C.tz + C.dist * cp * Math.cos(C.yaw)); cam.lookAt(C.tx, C.ty, C.tz); };
@@ -136,7 +167,7 @@
       roofG.visible = S.roof && sel < 0; roofG.position.y = S.explode ? (A.LEVELS.length) * 26 : 0; surG.visible = S.sur;
       const inf = el.querySelector('.ta3d-info'); if (inf) inf.innerHTML = lvInfo();
       bar && bar.querySelectorAll('[data-lv]').forEach((b) => b.classList.toggle('on', b.dataset.lv === S.level));
-      bar && ['roof', 'explode', 'sur'].forEach((k) => { const b = bar.querySelector('[data-t="' + k + '"]'); if (b) b.classList.toggle('on', !!S[k]); });
+      bar && ['roof', 'explode', 'sur', 'people'].forEach((k) => { const b = bar.querySelector('[data-t="' + k + '"]'); if (b) b.classList.toggle('on', k === 'people' ? PS.on : !!S[k]); });
       if (sel >= 0) { C.ty = A.LEVELS[sel].elev + (S.explode ? sel * 26 : 0); C.dist = Math.min(C.dist, 800); } else C.ty = 15;
     }
     let bar = null;
@@ -144,20 +175,26 @@
       bar = document.createElement('div'); bar.className = 'ta3d-bar';
       bar.style.cssText = 'position:absolute;left:10px;top:10px;display:flex;flex-wrap:wrap;gap:4px;max-width:calc(100% - 20px);z-index:2';
       const btn = (attrs, txt) => `<button type="button" ${attrs} style="background:#0e1722e6;color:#dbe6f2;border:1px solid #1f2f42;border-radius:6px;padding:4px 9px;font:600 11px system-ui,sans-serif;cursor:pointer">${txt}</button>`;
-      bar.innerHTML = btn('data-lv="all"', 'ALL LEVELS') + A.LEVELS.map((l) => btn('data-lv="' + l.id + '"', l.id)).join('') + (compact ? '' : btn('data-t="explode"', 'EXPLODE') + btn('data-t="roof"', 'ROOF') + btn('data-t="sur"', 'AIRPORT'));
+      bar.innerHTML = btn('data-lv="all"', 'ALL LEVELS') + A.LEVELS.map((l) => btn('data-lv="' + l.id + '"', l.id)).join('') + (compact ? '' : btn('data-t="explode"', 'EXPLODE') + btn('data-t="roof"', 'ROOF') + btn('data-t="sur"', 'AIRPORT') + btn('data-t="people"', 'PEOPLE') + '<select data-sp style="background:#0e1722e6;color:#dbe6f2;border:1px solid #1f2f42;border-radius:6px;padding:4px 6px;font:600 11px system-ui,sans-serif"><option value="6">6×</option><option value="12" selected>12×</option><option value="30">30×</option></select>');
       const st = document.createElement('style'); st.textContent = '.ta3d-bar button.on{background:#38bdf8!important;color:#04202c!important;border-color:#38bdf8!important}'; bar.appendChild(st);
       el.appendChild(bar);
-      bar.addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; if (b.dataset.lv) S.level = b.dataset.lv; else if (b.dataset.t) S[b.dataset.t] = !S[b.dataset.t]; apply(); });
+      bar.addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; if (b.dataset.lv) S.level = b.dataset.lv; else if (b.dataset.t === 'people') PS.on = !PS.on; else if (b.dataset.t) S[b.dataset.t] = !S[b.dataset.t]; apply(); });
+      bar.addEventListener('change', (e) => { if (e.target.dataset.sp) PS.speed = +e.target.value; });
       const info = document.createElement('div'); info.className = 'ta3d-info';
       info.style.cssText = 'position:absolute;left:10px;bottom:10px;background:#0b1520e6;border:1px solid #1f2f42;border-radius:6px;padding:6px 9px;color:#dbe6f2;font:11px/1.45 system-ui,sans-serif;pointer-events:none;z-index:2;max-width:70%';
       el.appendChild(info);
       const ray = new T.Raycaster(), mv = new T.Vector2();
       cv.addEventListener('pointermove', (e) => { if (drag) return; const b = cv.getBoundingClientRect(); mv.set(((e.clientX - b.left) / b.width) * 2 - 1, -((e.clientY - b.top) / b.height) * 2 + 1); ray.setFromCamera(mv, cam);
         const objs = []; root3.traverse((o) => { if (o.userData.z && o.visible && o.parent.visible) objs.push(o); }); const hit = ray.intersectObjects(objs, false)[0]; const z = hit && hit.object.userData.z;
+        if (z) info.dataset.hover = '1'; else delete info.dataset.hover;
         info.innerHTML = z ? '<b>' + z.name + '</b><br>' + (z.area ? Math.round(z.area).toLocaleString('en-US') + ' m² · ' : '') + (z.src === 'P' ? 'published' : 'estimate') : summary(); });
     }
-    const lvInfo = () => { const l = A.LEVELS.find((x) => x.id === S.level); return l ? '<b>' + l.name + '</b><br>+' + l.elev + ' m · floor-to-floor ' + l.h + ' m · ' + Math.round(l.gfa).toLocaleString('en-US') + ' m² GFA (est.)' : '<b>Terminal A, X-shaped, 4 piers</b><br>roof span 319 m · max height 52 m · 65 stands · model GFA ' + Math.round(A.GFA_MODEL).toLocaleString('en-US') + ' m²'; };
+    const baseInfo = () => { const l = A.LEVELS.find((x) => x.id === S.level); return l ? '<b>' + l.name + '</b><br>+' + l.elev + ' m · floor-to-floor ' + l.h + ' m · ' + Math.round(l.gfa).toLocaleString('en-US') + ' m² GFA (est.)' : '<b>Terminal A, X-shaped, 4 piers</b><br>roof span 319 m · max height 52 m · 65 stands · model GFA ' + Math.round(A.GFA_MODEL).toLocaleString('en-US') + ' m²'; };
+    const paxInfo = () => { const st = sim.stats; return '<br><span style="color:#22d3ee">LIVE</span> ' + st.total + ' passengers · ' + st.dep + ' departing · ' + st.arr + ' arriving · security queue ' + st.secQ + ' (~' + st.secWaitMin + ' min)'; };
+    const lvInfo = () => baseInfo() + (PS.on ? paxInfo() : '');
     const summary = lvInfo;
+    let infoAt = 0;
+    function updateInfo() { const now = performance.now(); if (now - infoAt < 500) return; infoAt = now; const inf = el.querySelector('.ta3d-info'); if (inf && !inf.dataset.hover) inf.innerHTML = lvInfo(); }
 
     function size() { const b = el.getBoundingClientRect(); if (b.width < 4) return; r.setSize(b.width, b.height, false); cam.aspect = b.width / b.height; cam.updateProjectionMatrix(); }
     const ro = new ResizeObserver(size); ro.observe(el); size();
@@ -165,11 +202,13 @@
     (function loop(t) {
       if (dead) return; if (!el.isConnected) { api.dispose(); return; }
       raf = requestAnimationFrame(loop); const dt = Math.min(0.1, (t - last) / 1000); last = t;
-      if (C.auto) C.yaw += dt * 0.12; place(); r.render(scene, cam);
+      if (C.auto) C.yaw += dt * 0.12;
+      if (PS.on) { sim.speed = PS.speed; sim.step(dt); }
+      place(); drawPeople(t / 1000); updateInfo(); r.render(scene, cam);
     })(last);
     const api = {
-      scene, camera: cam, state: S, view: C,
-      setLevel(id) { S.level = id; apply(); }, setExplode(v) { S.explode = !!v; apply(); }, setRoof(v) { S.roof = !!v; apply(); }, setSurroundings(v) { S.sur = !!v; apply(); },
+      scene, camera: cam, state: S, view: C, sim, people: PS,
+      setLevel(id) { S.level = id; apply(); }, setExplode(v) { S.explode = !!v; apply(); }, setRoof(v) { S.roof = !!v; apply(); }, setSurroundings(v) { S.sur = !!v; apply(); }, setPeople(v) { PS.on = !!v; apply(); },
       dispose() { dead = true; cancelAnimationFrame(raf); ro.disconnect(); r.dispose(); },
     };
     apply();
