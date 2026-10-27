@@ -340,3 +340,5 @@ table.t { width: 100%; border-collapse: collapse; font-size: 13px; }
 .g-jtrace { grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); align-items: start; } .g-jtrace .t td.mono { white-space: nowrap; }
 #jform input { min-width: 0; flex: 1 1 220px; max-width: 340px; }
 @media (max-width: 1100px) { .g-jtrace { grid-template-columns: minmax(0, 1fr); } }
+.tl-frame { display: block; width: 100%; height: calc(100vh - 56px); min-height: 640px; border: 0; background: #070d14; }
+@media (max-width: 760px) { .tl-frame { height: calc(100vh - 56px); } }
