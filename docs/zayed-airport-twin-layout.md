@@ -7,6 +7,7 @@ Open it in the console at `#/auhlayout`, or directly at `twin-lab/auh-layout.htm
 - **Airport overview**: indicative boundary (about 1,488 ha), two parallel 4,100 m x 60 m runways, taxiways, Terminal A apron, cargo and MRO, control tower, landside roads, car park, interchange and legacy Terminals 1-3.
 - **Terminal A footprint**: the X-shaped building with central hall and four piers, with dimension lines.
 - **Per-level plans (L0-L4)**: floor elevation, floor-to-floor height, gross floor area, and zone dimensions for baggage hall, reclaim, check-in islands, security checkpoints, immigration, lounges, retail and 65 stands.
+- **3D model**: Terminal A with its levels, glass shell, 319 m barrel-vault roof, 64 aircraft on the piers, apron, runways and landside. Pick a level to cut the building away to it, explode the levels, or hover a zone for its dimensions. The same model appears in the AUH layout page, in Indoor 3D ("Terminal A 3D (AUH)") and in the Command center.
 - **Exports**: GeoJSON (lat/lon) and JSON, from the same data file.
 - **Imagery calibration**: load a Google Maps / satellite screenshot, then match scale, offset and rotation to the runways.
 
@@ -25,7 +26,7 @@ Every item is tagged `P` (published) or `E` (estimate). The data file is `twin-l
 
 Estimated, and to be replaced with survey or BIM values: pier length (480 m) and width (70 m), hall depth (180 m), number and use of levels, floor-to-floor heights, runway spacing (1,700 m), runway bearing (131 degrees), boundary, landside and cargo positions.
 
-The modelled gross floor area is 765,059 m², 3.1% above the published 742,000 m².
+The modelled gross floor area is 768,059 m², 3.5% above the published 742,000 m².
 
 ## Limits
 

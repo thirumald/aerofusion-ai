@@ -64,20 +64,20 @@
 
   const LEVELS = [
     { id: 'L0', name: 'Level 0 - Apron / baggage handling', elev: 0, h: 6,
-      outline: [hall, ...piers.map((p) => p.poly), rect(-200, 0, 240, 300, 0)],
-      zones: [zr('bhs', 'Baggage handling hall (BHS)', 'bhs', -150, 0, 300, 260, 0), zr('gse', 'Ground support equipment area', 'service', 0, -220, 150, 60, 0), zr('plant0', 'Central plant', 'service', 0, 220, 150, 60, 0)] },
+      outline: [hall, ...piers.map((p) => p.poly), rect(-200, 0, 260, 300, 0)],
+      zones: [zr('bhs', 'Baggage handling hall (BHS)', 'bhs', -190, 0, 230, 260, 0), zr('gse', 'Ground support equipment area', 'service', 30, -120, 100, 50, 0), zr('plant0', 'Central plant', 'service', 30, 120, 100, 50, 0)] },
     { id: 'L1', name: 'Level 1 - Arrivals / reclaim', elev: 6, h: 8,
       outline: [hall, ...piers.map((p) => p.poly)],
-      zones: [zr('imm_arr', 'Arrival immigration', 'immigration', 60, 0, 40, 220, 0), zr('reclaim', 'Baggage reclaim (12 carousels)', 'reclaim', -20, 0, 70, 280, 0), zr('customs', 'Customs', 'customs', -90, 0, 30, 220, 0), zr('arr_hall', 'Arrivals hall and meeters', 'hall', -120, 0, 30, 319, 0)] },
+      zones: [zr('imm_arr', 'Arrival immigration', 'immigration', 55, 0, 40, 220, 0), zr('reclaim', 'Baggage reclaim (12 carousels)', 'reclaim', 0, 0, 60, 280, 0), zr('customs', 'Customs', 'customs', -48, 0, 24, 220, 0), zr('arr_hall', 'Arrivals hall and meeters', 'hall', -75, 0, 30, 319, 0)] },
     { id: 'L2', name: 'Level 2 - Mezzanine / lounges / offices', elev: 14, h: 6, coverage: 0.55, covNote: 'partial mezzanine floor plate',
       outline: [rect(0, 0, HALL_W, HALL_D, 0), ...piers.map((p) => arm(PIER_LEN, PIER_W, ANG[piers.indexOf(p)], 60))],
       zones: [zr('lounge', 'Premium lounges', 'lounge', 30, 0, 80, 280, 0), zr('office', 'Airport and airline offices', 'service', -60, 0, 60, 280, 0)] },
     { id: 'L3', name: 'Level 3 - Departures / check-in / security', elev: 20, h: 10,
       outline: [hall, ...piers.map((p) => p.poly)],
-      zones: [zr('ci_hall', 'Check-in hall', 'hall', -50, 0, 130, 319, 0), ...islands, zr('kerb', 'Departures kerb frontage (elevated)', 'kerb', -110, 0, 8, 319, 0, 'P', 'frontage = published 319 m span'), ...secs, zr('imm_dep', 'Departure immigration', 'immigration', 88, 0, 14, 300, 0)] },
+      zones: [zr('ci_hall', 'Check-in hall', 'hall', -40, 0, 100, 319, 0), ...islands, zr('kerb', 'Departures kerb frontage (elevated)', 'kerb', -86, 0, 8, 319, 0, 'P', 'frontage = published 319 m span'), ...secs, zr('imm_dep', 'Departure immigration', 'immigration', 83, 0, 12, 300, 0)] },
     { id: 'L4', name: 'Level 4 - Airside concourse / gates', elev: 30, h: 12, coverage: 0.9, covNote: 'voids over the central hall',
       outline: [hall, ...piers.map((p) => p.poly)],
-      zones: [zr('retail', 'Central retail plaza', 'retail', 60, 0, 90, 300, 0), ...piers.map((p) => ({ ...p, type: 'pier', note: 'pier concourse, ' + PIER_LEN + ' m long x ' + PIER_W + ' m wide (estimated)' })), ...gates] },
+      zones: [zr('retail', 'Central retail plaza', 'retail', 40, 0, 80, 300, 0), ...piers.map((p) => ({ ...p, type: 'pier', note: 'pier concourse, ' + PIER_LEN + ' m long x ' + PIER_W + ' m wide (estimated)' })), ...gates] },
   ];
   LEVELS.forEach((l) => { l.zones.forEach((z) => { if (z.poly) { z.area = Math.round(area(z.poly)); z.bb = bbox(z.poly); } });
     l.footprint = Math.round(union(l.outline)); l.gfa = Math.round(l.footprint * (l.coverage || 1)); });

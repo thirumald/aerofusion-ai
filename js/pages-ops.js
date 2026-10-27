@@ -52,6 +52,7 @@
         <section class="card"><div class="card-h"><h3>Facility risk map</h3><span class="mut sm">zone risk = baseline + active alerts · click a camera pin</span></div><div id="map">${ui.mapSvg()}</div></section>
         <section class="card"><div class="card-h"><h3>Active alerts</h3><a href="#/alerts" class="sm">All alerts</a></div><div id="alist" class="alist">${list()}</div></section>
       </div>
+      <section class="card"><div class="card-h"><h3>Terminal A 3D · AUH</h3><a href="#/auhlayout" class="sm">Layout and dimensions</a></div><div id="ta3d" style="position:relative;height:380px;border-radius:8px;overflow:hidden;background:#070d14"></div></section>
       <div class="grid g-3">
         ${['CAM-03', 'CAM-04', 'CAM-02'].map((id) => { const c = AF.cameras.find((x) => x.id === id); return `<a class="card camcard" href="#/cameras/${id}"><div class="vid"><canvas data-mini="${c.scenario}"></canvas><span class="vid-tag">SIMULATED</span></div><div class="card-h"><b>${id}</b><span class="mut sm">${esc(c.name)}</span></div></a>`; }).join('')}
       </div>
@@ -65,6 +66,7 @@
           </tbody></table></section>
       </div>`;
     view.querySelectorAll('canvas[data-mini]').forEach((c) => new window.Sim.Player(c, window.Sim.scen[c.dataset.mini], { mini: true }));
+    const th = view.querySelector('#ta3d'); if (th && window.TerminalA3D) window.TerminalA3D.mount(th, { mode: 'compact', autorotate: true }).catch(() => { th.textContent = '3D model unavailable'; });
   };
 
 

@@ -30,22 +30,23 @@ td.n{text-align:right;font-variant-numeric:tabular-nums}.P{color:var(--ok)}.E{co
 <label>Opacity<input id="iop" type="range" min="0" max="100" value="55"></label><label>Scale (m per pixel)<input id="isc" type="range" min="0.2" max="12" step="0.05" value="2"></label>
 <label>Offset X<input id="iox" type="range" min="-3000" max="3000" value="0"></label><label>Offset Y<input id="ioy" type="range" min="-3000" max="3000" value="0"></label><label>Rotation<input id="irot" type="range" min="-180" max="180" step="0.5" value="0"></label>
 <p class="note">Load a satellite screenshot, then match it to the runways using the sliders. Items are in metres, so edit <code>auh-layout-data.js</code> to the traced values.</p></div></aside>
-<main id="stage"><svg id="svg"></svg><div class="tip" id="tip"></div></main>
+<main id="stage"><svg id="svg"></svg><div id="m3d" style="position:absolute;inset:0;display:none"></div><div class="tip" id="tip"></div></main>
 <aside class="r"><div id="side"></div></aside>
 </div>
 <script src="auh-layout-data.js"></script>
+<script src="../js/terminal-a-3d.js"></script>
 <script>
 (function(){'use strict';
 const A=window.AUH,$=(s)=>document.querySelector(s),svg=$('#svg'),NS='http://www.w3.org/2000/svg';
 const COL={runway:'#4b5563',taxiway:'#374151',apron:'#1f2a37',cargo:'#3b2f55',road:'#334155',parking:'#1e3a5f',transit:'#0f766e',legacy:'#3f3f46',service:'#7c5a10',hall:'#0e3a52',checkin:'#38bdf8',security:'#f5b50b',immigration:'#a78bfa',reclaim:'#34d399',customs:'#fb923c',bhs:'#14b8a6',lounge:'#c084fc',retail:'#f472b6',kerb:'#e5e7eb',pier:'#164e63',gate:'#22d3ee',boundary:'none'};
-const S={view:'airport',layers:{boundary:1,airside:1,landside:1,terminal:1,labels:1,dims:1,grid:1,gates:1},vb:null,img:null};
+const S={view:'3d',layers:{boundary:1,airside:1,landside:1,terminal:1,labels:1,dims:1,grid:1,gates:1},vb:null,img:null};
 const fmt=(n)=>Math.round(n).toLocaleString('en-US');
 const el=(t,a,p)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);(p||svg).appendChild(e);return e;};
 const pts=(poly)=>poly.map(p=>p[0].toFixed(1)+','+(-p[1]).toFixed(1)).join(' ');
 const bbOf=(polys)=>{const b=polys.map(A.bbox);return{x0:Math.min(...b.map(q=>q.x0)),x1:Math.max(...b.map(q=>q.x1)),y0:Math.min(...b.map(q=>q.y0)),y1:Math.max(...b.map(q=>q.y1))};};
 
 /* controls */
-const views=[['airport','Airport overview',A.BOUNDARY.area?'boundary, runways, aprons, landside':''],['terminal','Terminal A footprint','all levels overlaid'],...A.LEVELS.map(l=>[l.id,l.name,'+'+l.elev+' m · floor-to-floor '+l.h+' m'])];
+const views=[['3d','Terminal A 3D model','levels, roof, aircraft, airside'],['airport','Airport overview',A.BOUNDARY.area?'boundary, runways, aprons, landside':''],['terminal','Terminal A footprint','all levels overlaid'],...A.LEVELS.map(l=>[l.id,l.name,'+'+l.elev+' m · floor-to-floor '+l.h+' m'])];
 $('#views').innerHTML=views.map(v=>`<button class="lv" data-v="${v[0]}">${v[1]}<small>${v[2]}</small></button>`).join('');
 $('#layers').innerHTML=Object.keys(S.layers).map(k=>`<label class="chk"><input type="checkbox" data-l="${k}" checked> ${k}</label>`).join('');
 document.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>{S.view=b.dataset.v;S.vb=null;draw();});
@@ -70,7 +71,9 @@ function drawImage(){if(!S.img)return;const sc=+$('#isc').value,w=S.img.w*sc,h=S
 
 function terminalShapes(levels){levels.forEach(l=>l.outline.forEach((p,i)=>el('polygon',{points:pts(p),fill:'#0e3a52','fill-opacity':levels.length>1?.18:.35,stroke:'#38bdf8','stroke-opacity':.5,'stroke-width':1,'vector-effect':'non-scaling-stroke'})));}
 
-function draw(){svg.innerHTML='';document.querySelectorAll('[data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===S.view));
+let m3d=null;
+function show3d(on){svg.style.display=on?'none':'block';$('#m3d').style.display=on?'block':'none';if(on&&!m3d){m3d=1;TerminalA3D.mount($('#m3d'),{autorotate:true}).then(a=>{m3d=a;}).catch(e=>{m3d=null;$('#m3d').textContent=e.message;});}}
+function draw(){show3d(S.view==='3d');document.querySelectorAll('[data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===S.view));if(S.view==='3d'){svg.innerHTML='';side(null);return;}svg.innerHTML='';document.querySelectorAll('[data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===S.view));
  let b,size,g;const lvl=A.LEVELS.find(l=>l.id===S.view);
  if(S.view==='airport'){b={x0:-2700,x1:2700,y0:-1700,y1:1700};size=70;}
  else if(S.view==='terminal'){b={x0:-900,x1:900,y0:-500,y1:500};size=14;}

@@ -13,7 +13,7 @@
     view.innerHTML = `<div class="twin"><aside class="tmods"><div class="tm-h">INDOOR 3D</div><div class="tm-g">FLOOR</div>
       <button class="tm on" data-f="all">All floors</button>${FLOORS.map((f) => `<button class="tm" data-f="${f.id}">${f.name}</button>`).join('')}
       <div class="tm-g">LAYERS</div><label class="tm lay"><input type="checkbox" data-l="tokens" checked> Live tokens</label><label class="tm lay"><input type="checkbox" data-l="cams" checked> Camera cones</label>
-      <div class="tm-g">VIEW</div><button class="tm" id="in-reset">Reset view</button><p class="sm mut" style="padding:0 12px">Drag to rotate, scroll to zoom, click a room.</p>
+      <div class="tm-g">MODEL</div><button class="tm" id="in-a">Terminal A 3D (AUH)</button><div class="tm-g">VIEW</div><button class="tm" id="in-reset">Reset view</button><p class="sm mut" style="padding:0 12px">Drag to rotate, scroll to zoom, click a room.</p>
       <div class="tm-g">RELATED</div><a class="tm" href="#/twin">Airport twin ›</a><a class="tm" href="#/checkpoint">Checkpoint ›</a></aside>
       <div class="tcenter"><canvas id="ic" aria-label="Indoor 3D terminal cutaway"></canvas><div class="tstat"><span class="dot ok"></span> INDOOR TWIN · ${esc(AF.airport.short)} · ILLUSTRATIVE LAYOUT</div></div>
       <section class="tpanel" id="ipanel"><h3>Indoor 3D</h3><p class="sm mut">Three stacked levels. Room colour follows the live security risk score. Click a room for its cameras and risk.</p></section></div>`;
@@ -75,5 +75,14 @@
     view.querySelectorAll('[data-f]').forEach((b) => b.addEventListener('click', () => { S.floor = b.dataset.f; view.querySelectorAll('[data-f]').forEach((x) => x.classList.toggle('on', x === b)); }));
     view.querySelectorAll('[data-l]').forEach((c) => c.addEventListener('change', () => { S[c.dataset.l] = c.checked; }));
     view.querySelector('#in-reset').addEventListener('click', () => { S.yaw = 0.6; S.pitch = 0.55; S.zoom = 0.85; });
+    /* AUH Terminal A 3D model, shown in place of the illustrative cutaway */
+    let a3 = null, a3host = null;
+    view.querySelector('#in-a').addEventListener('click', (ev) => {
+      const b = ev.currentTarget, on = !b.classList.contains('on'); b.classList.toggle('on', on);
+      const stage = view.querySelector('.tcenter');
+      if (!a3host) { a3host = document.createElement('div'); a3host.style.cssText = 'position:absolute;inset:0;z-index:3;background:#070d14'; stage.appendChild(a3host); TerminalA3D.mount(a3host, { level: 'L3' }).then((a) => { a3 = a; }); }
+      a3host.style.display = on ? 'block' : 'none';
+      view.querySelector('#ipanel').innerHTML = on ? '<h3>Terminal A (AUH)</h3><p class="sm mut">Pick a level to cut the building away to that floor, or explode the levels. Hover a zone for its dimensions. Floor plates are modelled from published and estimated dimensions.</p><a class="tm" href="twin-lab/auh-layout.html" target="_self">Layout and dimensions ›</a>' : '<h3>Indoor 3D</h3><p class="sm mut">Three stacked levels. Room colour follows the live security risk score. Click a room for its cameras and risk.</p>';
+    });
   };
 })();
