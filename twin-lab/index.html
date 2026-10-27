@@ -717,7 +717,8 @@ function init3D(){
   const NTG=8,tugs=new THREE.InstancedMesh(new THREE.BoxGeometry(2.4,1.4,3.4).translate(0,.8,0),new THREE.MeshLambertMaterial({color:0xff9a2e}),NTG);
   const tugS=[];for(let i=0;i<NTG;i++)tugS.push({z:rng3()*90,v:(rng3()<.5?-1:1)*(3+rng3()*3),x:289+(i%2)*4});
   tugs.frustumCulled=false;scene.add(tugs);
-  const jet=makePlane();jet.rotation.y=-Math.PI/2;jet.position.set(361,3.6,300);scene.add(jet);
+  const jet=makePlane();jet.rotation.y=-Math.PI/2;jet.position.set(367,3.6,300);scene.add(jet);
+  const lander=makePlane();lander.rotation.y=Math.PI/2;lander.position.set(355,3.6,-700);scene.add(lander);
   // outdoor labels
   [['Car Park',-74,22,-6,22],['Hotel',-77,62,82,16],['Control Tower',150,53,-34,22],['Hangars',268,22,-70,18]].forEach(l=>{const sp=label3(l[0],'',l[4]);sp.position.set(l[1],l[2],l[3]);scene.add(sp);});
 
@@ -770,6 +771,11 @@ function init3D(){
     for(let i=0;i<NTG;i++){const g=tugS[i];g.z+=g.v*.016;if(g.z>100)g.z=-8;if(g.z<-8)g.z=100;const o=i*16;ta[o]=1;ta[o+5]=1;ta[o+10]=1;ta[o+15]=1;ta[o+12]=g.x;ta[o+13]=0;ta[o+14]=g.z;}
     tugs.instanceMatrix.needsUpdate=true;
     const cyc=(t%34)/34,jz=300-cyc*620;jet.position.z=jz;jet.position.y=3.6+Math.max(0,(40-jz))*.22;jet.rotation.z=jz<40?-.14:0;
+    /* landing: glide in nose-down, flare, touch down at z=-150 and roll out decelerating along the runway */
+    const lc=((t+17)%34)/34;let lz,ly,lp;
+    if(lc<.6){const f=lc/.6;lz=-700+f*550;ly=3.6+(1-f)*50;lp=f>.88?.07:-.05;}
+    else{const f=(lc-.6)/.4;lz=-150+(1-Math.pow(1-f,2))*450;ly=3.6;lp=0;}
+    lander.position.set(355,ly,lz);lander.rotation.z=lp;lander.visible=lc<.985;
     beacon.visible=Math.floor(t*1.5)%2===0;
   }
   T3extra={people,roof,env,setEnv,animateEnv};

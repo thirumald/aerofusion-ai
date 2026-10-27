@@ -9,6 +9,7 @@ Open it in the console at `#/auhlayout`, or directly at `twin-lab/auh-layout.htm
 - **Per-level plans (L0-L4)**: floor elevation, floor-to-floor height, gross floor area, and zone dimensions for baggage hall, reclaim, check-in islands, security checkpoints, immigration, lounges, retail and 65 stands.
 - **3D model**: Terminal A with its levels, glass shell, 319 m barrel-vault roof, 64 aircraft on the piers, apron, runways and landside. Pick a level to cut the building away to it, explode the levels, or hover a zone for its dimensions. The same model appears in the AUH layout page, in Indoor 3D ("Terminal A 3D (AUH)") and in the Command center.
 - **Live passengers**: about 550 simulated passengers walk the real layout in the 3D model and on the 2D plans (departures: kerb, check-in, security, immigration, retail, pier, stand; arrivals: stand, pier, immigration, reclaim, customs, hall, kerb). Security and other stations queue. Flows, dwell times and queues are synthetic (`twin-lab/auh-pax.js`).
+- **Flights**: aircraft land on the runways, roll out, taxi to a free stand, and others push back, taxi out and take off, with shadows and flashing beacons. Use FLIGHTS to switch them off and AIRFIELD for a view of the runways. About a third of the stands are used by the moving aircraft; the rest stay parked. Flight timings are illustrative.
 - **Exports**: GeoJSON (lat/lon) and JSON, from the same data file.
 - **Imagery calibration**: load a Google Maps / satellite screenshot, then match scale, offset and rotation to the runways.
 

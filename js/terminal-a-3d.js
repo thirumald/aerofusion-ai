@@ -90,13 +90,16 @@
     const wing = new T.InstancedMesh(new T.BoxGeometry(11, 0.6, 40), mat(0xcbd5e1, 1), gates.length);
     const fin = new T.InstancedMesh(new T.BoxGeometry(7, 9, 0.7), mat(0x38bdf8, 1), gates.length);
     const m4 = new T.Matrix4(), q = new T.Quaternion(), up = new T.Vector3(0, 1, 0), sc = new T.Vector3(1, 1, 1);
-    gates.forEach((z, k) => {
+    const ac3 = new T.Vector3();
+    /* place stand aircraft by data-plane heading psi (nose along psi); parts sit at offsets along the fuselage */
+    const putAc = (im, k, x, y, psi, off, h) => { q.setFromAxisAngle(up, psi); ac3.set(off, 0, 0).applyQuaternion(q); m4.compose(new T.Vector3(x * 1 + ac3.x, h, -y + ac3.z), q, sc); im.setMatrixAt(k, m4); };
+    const stands = gates.map((z, k) => {
       const n = +z.id.slice(1) - 1, pi = Math.floor(n / 16), a = (pi === 0 ? 35 : pi === 1 ? -35 : pi === 2 ? 145 : -145) * Math.PI / 180;
       const d = z.pt[0] * Math.cos(a) + z.pt[1] * Math.sin(a), nx = z.pt[0] - d * Math.cos(a), ny = z.pt[1] - d * Math.sin(a), nl = Math.hypot(nx, ny) || 1;
-      const dx = nx / nl, dy = ny / nl, cx = z.pt[0] + dx * 30, cz = -(z.pt[1] + dy * 30), yaw = Math.atan2(-dy, dx);
-      q.setFromAxisAngle(up, yaw);
-      const set = (im, off, h) => { const o = new T.Vector3(off, 0, 0).applyQuaternion(q); m4.compose(new T.Vector3(cx + o.x, h, cz + o.z), q, sc); im.setMatrixAt(k, m4); };
-      set(fus, 0, 4.6); set(wing, 2, 3.8); set(fin, -20, 8.6);
+      const dx = nx / nl, dy = ny / nl, cx = z.pt[0] + dx * 30, cy = z.pt[1] + dy * 30, psi = Math.atan2(-dy, -dx); /* nose-in: nose toward the pier */
+      putAc(fus, k, cx, cy, psi, 0, 4.6); putAc(wing, k, cx, cy, psi, 2, 3.8); putAc(fin, k, cx, cy, psi, -20, 8.6);
+      const mats = [fus, wing, fin].map((im) => { const m = new T.Matrix4(); im.getMatrixAt(k, m); return m; });
+      return { k, id: z.id, pt: z.pt, n: [dx, dy], c: [cx, cy], psi, mats, occ: true, dyn: false, E: [z.pt[0] + dx * 95, z.pt[1] + dy * 95] };
     });
     [fus, wing, fin].forEach((im) => { im.instanceMatrix.needsUpdate = true; surG.add(im); });
 
@@ -159,6 +162,92 @@
       if (torso.instanceColor) torso.instanceColor.needsUpdate = true;
     }
 
+    /* ---- flights: aircraft land, taxi to a stand, push back, taxi out and take off ---- */
+    const FL = { on: opts.flights !== false, ac: [], clock: 0, speed: opts.flightSpeed || 3, nextArr: 3, arrivals: 0, departures: 0, rwyBusy: { 1: 0, '-1': 0 } };
+    const flightG = new T.Group(); surG.add(flightG);
+    const RWY_Y = A.AIRSIDE[0].poly[0][1] + 30, TWY_Y = RWY_Y - 330, X_THR = 2050, X_TD = 1750;   /* runway centre y, parallel taxiway y, threshold and touchdown distance from centre */
+    const inPoly2 = (p, x, y) => { let c = false; for (let i = 0, j = p.length - 1; i < p.length; j = i++) if ((p[i][1] > y) !== (p[j][1] > y) && x < ((p[j][0] - p[i][0]) * (y - p[i][1])) / (p[j][1] - p[i][1]) + p[i][0]) c = !c; return c; };
+    const obstacles = A.PIERS.map((p) => p.poly).concat([A.HALL]);
+    const clearSeg = (a, b) => { const n = Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 4); for (let i = 0; i <= n; i++) { const x = a[0] + ((b[0] - a[0]) * i) / n, y = a[1] + ((b[1] - a[1]) * i) / n; if (obstacles.some((p) => inPoly2(p, x, y))) return false; } return true; };
+    stands.forEach((s) => { s.sy = s.E[1] >= 0 ? 1 : -1; s.dyn = clearSeg([s.E[0], s.sy * TWY_Y], s.E) && clearSeg(s.E, s.c); s.t = 0; });
+    const dynStands = stands.filter((s) => s.dyn);
+    const hideStand = (s) => { const z = new T.Matrix4().makeScale(0.0001, 0.0001, 0.0001); [fus, wing, fin].forEach((im) => { im.setMatrixAt(s.k, z); im.instanceMatrix.needsUpdate = true; }); };
+    const showStand = (s) => { [fus, wing, fin].forEach((im, i) => { im.setMatrixAt(s.k, s.mats[i]); im.instanceMatrix.needsUpdate = true; }); };
+    dynStands.forEach((s, i) => { if (i % 4 === 0) { s.occ = false; hideStand(s); } else s.t = 20 + ((i * 37) % 40); });
+
+    const LIV = [0x38bdf8, 0xf59e0b, 0xef4444, 0x22c55e, 0xa855f7, 0xe11d48];
+    function makeAircraft() {
+      const g = new T.Group(), body = mat(0xf1f5f9, 1), tail = mat(LIV[Math.floor(Math.random() * LIV.length)], 1), dark = mat(0x94a3b8, 1);
+      const fu = new T.Mesh(new T.CylinderGeometry(2.8, 2.5, 44, 10).rotateZ(Math.PI / 2), body), nose = new T.Mesh(new T.ConeGeometry(2.8, 7, 10).rotateZ(-Math.PI / 2).translate(25.5, 0, 0), body), rear = new T.Mesh(new T.ConeGeometry(2.5, 10, 10).rotateZ(Math.PI / 2).translate(-27, 0.8, 0), body);
+      const wl = new T.Mesh(new T.BoxGeometry(10, 0.6, 20).translate(1, -0.6, 11), dark), wr = new T.Mesh(new T.BoxGeometry(10, 0.6, 20).translate(1, -0.6, -11), dark);
+      wl.rotation.y = -0.45; wr.rotation.y = 0.45;
+      const fn = new T.Mesh(new T.BoxGeometry(8, 9, 0.8).translate(-19, 6.5, 0), tail), st = new T.Mesh(new T.BoxGeometry(5, 0.5, 14).translate(-21, 2, 0), dark);
+      const e1 = new T.Mesh(new T.CylinderGeometry(1.5, 1.5, 5, 8).rotateZ(Math.PI / 2).translate(4, -2.6, 11), dark), e2 = new T.Mesh(e1.geometry.clone().translate(0, 0, -22), dark);
+      const light = new T.Mesh(new T.SphereGeometry(1.1, 6, 4).translate(-20, 13, 0), new T.MeshBasicMaterial({ color: 0xff3b3b }));
+      g.add(fu, nose, rear, wl, wr, fn, st, e1, e2, light);
+      const sh = new T.Mesh(new T.CircleGeometry(1, 16).rotateX(-Math.PI / 2), new T.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.35, depthWrite: false })); sh.scale.set(30, 1, 22); sh.position.y = 0.5;
+      g.rotation.order = 'YZX'; g.userData.light = light; g.userData.shadow = sh; flightG.add(g); flightG.add(sh);
+      return g;
+    }
+    const wrapA = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
+    function poseAc(f) { const k = 1 - Math.min(0.5, f.alt / 400), sh = f.g.userData.shadow; f.g.position.set(f.x, f.alt + 3.2, -f.y); f.g.rotation.y = f.psi; f.g.rotation.z = f.pitch; sh.position.set(f.x + f.alt * 0.2, 0.5, -f.y); sh.scale.set(30 * k, 1, 22 * k); sh.rotation.y = f.psi; }
+    function dropAc(f) { f.g.parent.remove(f.g); f.g.userData.shadow.parent.remove(f.g.userData.shadow); }
+    /* follow f.path at up to vmax (m/s before the flight speed factor); true when the last point is reached */
+    function stepPath(f, h, vmax) {
+      const tgt = f.path[f.pi + 1]; if (!tgt) return true;
+      const dx = tgt[0] - f.x, dy = tgt[1] - f.y, d = Math.hypot(dx, dy), want = Math.atan2(dy, dx);
+      if (d > 0.5 && f.mode !== 'push') f.psi += wrapA(want - f.psi) * Math.min(1, h * 2.6);
+      f.v += (vmax - f.v) * Math.min(1, h * 1.2);
+      const st = f.v * h * FL.speed; if (st >= d) { f.x = tgt[0]; f.y = tgt[1]; f.pi++; return !f.path[f.pi + 1]; }
+      f.x += (dx / d) * st; f.y += (dy / d) * st; return false;
+    }
+    function spawnArrival() {
+      const free = dynStands.filter((s) => !s.occ && !s.taken && FL.rwyBusy[s.sy] <= FL.clock); if (!free.length) return false;
+      const s = free[Math.floor(Math.random() * free.length)], d = Math.random() < 0.5 ? 1 : -1, ry = s.sy * RWY_Y, ty = s.sy * TWY_Y, xtd = -d * X_TD, roll = 1300 + Math.random() * 600, xe = xtd + d * roll;
+      s.taken = true;
+      const f = { g: makeAircraft(), kind: 'arr', mode: 'app', stand: s, d, ry, ty, xtd, xe, x: -d * (X_THR + 3600), y: ry, alt: 190, psi: d > 0 ? 0 : Math.PI, pitch: -0.05, v: 78, pi: 0 };
+      f.path = [[xe, ry], [xe, ty], [s.E[0], ty], s.E, s.c];
+      FL.rwyBusy[s.sy] = FL.clock + 70; FL.ac.push(f); return true;
+    }
+    function spawnDeparture(s) {
+      const d = Math.random() < 0.5 ? 1 : -1, ry = s.sy * RWY_Y, ty = s.sy * TWY_Y, xs = -d * (X_THR - 150);
+      hideStand(s); s.occ = false; s.taken = true;
+      const f = { g: makeAircraft(), kind: 'dep', mode: 'push', stand: s, d, ry, ty, xs, x: s.c[0], y: s.c[1], alt: 0, psi: s.psi, pitch: 0, v: 0, hold: 0, pi: 0 };
+      f.path = [s.c, s.E]; FL.ac.push(f);
+    }
+    function flightsStep(dt) {
+      FL.clock += dt;
+      if (FL.clock >= FL.nextArr) { FL.nextArr = FL.clock + (spawnArrival() ? 22 + Math.random() * 22 : 6); }
+      dynStands.forEach((s) => { if (s.occ && !s.taken) { s.t += dt; if (s.t > 38 + (s.k % 7) * 4 && FL.rwyBusy[s.sy] <= FL.clock + 10 && FL.ac.filter((a) => a.kind === 'dep' && a.mode !== 'climb').length < 2) { s.t = 0; spawnDeparture(s); } } });
+      for (let i = FL.ac.length - 1; i >= 0; i--) {
+        const f = FL.ac[i], h = dt;
+        if (f.kind === 'arr') {
+          if (f.mode === 'app') {
+            f.x += f.d * f.v * h * FL.speed; const rem = (f.xtd - f.x) * f.d; f.alt = Math.max(0, Math.tan(0.0524) * rem); f.pitch = rem < 120 ? 0.07 : -0.05;
+            if (rem <= 0) { f.mode = 'roll'; f.alt = 0; f.pitch = 0; }
+          } else if (f.mode === 'roll') {
+            const rem = (f.xe - f.x) * f.d; f.v = Math.max(13, 70 * Math.min(1, rem / 1100)); f.x += f.d * f.v * h * FL.speed; if (rem <= 0) { f.mode = 'taxi'; f.pi = 0; f.v = 13; }
+          } else if (f.mode === 'taxi') {
+            const near = Math.hypot(f.x - f.stand.c[0], f.y - f.stand.c[1]) < 120;
+            if (stepPath(f, h, near ? 4 : 14)) { f.stand.occ = true; f.stand.taken = false; f.stand.t = 0; showStand(f.stand); dropAc(f); FL.ac.splice(i, 1); FL.arrivals++; continue; }
+          }
+        } else if (f.mode === 'push') {
+          if (stepPath(f, h, 3.2)) { f.mode = 'taxi'; f.path = [f.stand.E, [f.stand.E[0], f.ty], [f.xs, f.ty], [f.xs, f.ry]]; f.pi = 0; }
+        } else if (f.mode === 'taxi') {
+          if (stepPath(f, h, 14)) { f.mode = 'line'; f.hold = FL.clock + 2.5; f.psi = f.d > 0 ? 0 : Math.PI; f.v = 0; FL.rwyBusy[f.stand.sy] = FL.clock + 60; }
+        } else if (f.mode === 'line') {
+          if (FL.clock >= f.hold) f.mode = 'roll';
+        } else if (f.mode === 'roll') {
+          f.v += 1.4 * h * FL.speed; f.x += f.d * f.v * h * FL.speed; if (f.v > 74) { f.mode = 'climb'; f.xr = f.x; }
+        } else if (f.mode === 'climb') {
+          f.v = Math.min(95, f.v + 0.8 * h); f.x += f.d * f.v * h * FL.speed; const run = (f.x - f.xr) * f.d; f.alt = run * 0.11; f.pitch = Math.min(0.17, 0.02 + run / 2500);
+          if (run > 3600) { f.stand.taken = false; dropAc(f); FL.ac.splice(i, 1); FL.departures++; continue; }
+        }
+        poseAc(f);
+        f.g.userData.light.visible = Math.floor(FL.clock * 1.6) % 2 === 0;
+      }
+    }
+
     /* ---- orbit camera ---- */
     const C = { yaw: -0.75, pitch: 0.62, dist: opts.dist || (compact ? 1500 : 1300), tx: 0, ty: 15, tz: 0, auto: !!opts.autorotate };
     const place = () => { const cp = Math.cos(C.pitch); cam.position.set(C.tx + C.dist * cp * Math.sin(C.yaw), C.ty + C.dist * Math.sin(C.pitch), C.tz + C.dist * cp * Math.cos(C.yaw)); cam.lookAt(C.tx, C.ty, C.tz); };
@@ -184,7 +273,7 @@
       roofG.visible = S.roof && sel < 0; roofG.position.y = S.explode ? (A.LEVELS.length) * 26 : 0; surG.visible = S.sur;
       const inf = el.querySelector('.ta3d-info'); if (inf) inf.innerHTML = lvInfo();
       bar && bar.querySelectorAll('[data-lv]').forEach((b) => b.classList.toggle('on', b.dataset.lv === S.level));
-      bar && ['roof', 'explode', 'sur', 'people'].forEach((k) => { const b = bar.querySelector('[data-t="' + k + '"]'); if (b) b.classList.toggle('on', k === 'people' ? PS.on : !!S[k]); });
+      bar && ['roof', 'explode', 'sur', 'people', 'flights'].forEach((k) => { const b = bar.querySelector('[data-t="' + k + '"]'); if (b) b.classList.toggle('on', k === 'people' ? PS.on : k === 'flights' ? FL.on : !!S[k]); });
       if (sel >= 0) { C.ty = A.LEVELS[sel].elev + (S.explode ? sel * 26 : 0); C.dist = Math.min(C.dist, 800); } else C.ty = 15;
     }
     let bar = null;
@@ -192,10 +281,10 @@
       bar = document.createElement('div'); bar.className = 'ta3d-bar';
       bar.style.cssText = 'position:absolute;left:10px;top:10px;display:flex;flex-wrap:wrap;gap:4px;max-width:calc(100% - 20px);z-index:2';
       const btn = (attrs, txt) => `<button type="button" ${attrs} style="background:#0e1722e6;color:#dbe6f2;border:1px solid #1f2f42;border-radius:6px;padding:4px 9px;font:600 11px system-ui,sans-serif;cursor:pointer">${txt}</button>`;
-      bar.innerHTML = btn('data-lv="all"', 'ALL LEVELS') + A.LEVELS.map((l) => btn('data-lv="' + l.id + '"', l.id)).join('') + (compact ? '' : btn('data-t="explode"', 'EXPLODE') + btn('data-t="roof"', 'ROOF') + btn('data-t="sur"', 'AIRPORT') + btn('data-t="people"', 'PEOPLE') + '<select data-sp style="background:#0e1722e6;color:#dbe6f2;border:1px solid #1f2f42;border-radius:6px;padding:4px 6px;font:600 11px system-ui,sans-serif"><option value="6">6×</option><option value="12" selected>12×</option><option value="30">30×</option></select>');
+      bar.innerHTML = btn('data-lv="all"', 'ALL LEVELS') + A.LEVELS.map((l) => btn('data-lv="' + l.id + '"', l.id)).join('') + (compact ? '' : btn('data-t="explode"', 'EXPLODE') + btn('data-t="roof"', 'ROOF') + btn('data-t="sur"', 'AIRPORT') + btn('data-t="people"', 'PEOPLE') + btn('data-t="flights"', 'FLIGHTS') + btn('data-t="airfield"', 'AIRFIELD') + '<select data-sp style="background:#0e1722e6;color:#dbe6f2;border:1px solid #1f2f42;border-radius:6px;padding:4px 6px;font:600 11px system-ui,sans-serif"><option value="6">6×</option><option value="12" selected>12×</option><option value="30">30×</option></select>');
       const st = document.createElement('style'); st.textContent = '.ta3d-bar button.on{background:#38bdf8!important;color:#04202c!important;border-color:#38bdf8!important}'; bar.appendChild(st);
       el.appendChild(bar);
-      bar.addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; if (b.dataset.lv) S.level = b.dataset.lv; else if (b.dataset.t === 'people') PS.on = !PS.on; else if (b.dataset.t) S[b.dataset.t] = !S[b.dataset.t]; apply(); });
+      bar.addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; if (b.dataset.lv) S.level = b.dataset.lv; else if (b.dataset.t === 'people') PS.on = !PS.on; else if (b.dataset.t === 'flights') { FL.on = !FL.on; flightG.visible = FL.on; } else if (b.dataset.t === 'airfield') { S.level = 'all'; Object.assign(C, { dist: 3300, pitch: 0.3, yaw: -0.5, tx: 0, ty: 0, tz: 0, auto: false }); S.sur = true; } else if (b.dataset.t) S[b.dataset.t] = !S[b.dataset.t]; apply(); });
       bar.addEventListener('change', (e) => { if (e.target.dataset.sp) PS.speed = +e.target.value; });
       const info = document.createElement('div'); info.className = 'ta3d-info';
       info.style.cssText = 'position:absolute;left:10px;bottom:10px;background:#0b1520e6;border:1px solid #1f2f42;border-radius:6px;padding:6px 9px;color:#dbe6f2;font:11px/1.45 system-ui,sans-serif;pointer-events:none;z-index:2;max-width:70%';
@@ -208,7 +297,8 @@
     }
     const baseInfo = () => { const l = A.LEVELS.find((x) => x.id === S.level); return l ? '<b>' + l.name + '</b><br>+' + l.elev + ' m · floor-to-floor ' + l.h + ' m · ' + Math.round(l.gfa).toLocaleString('en-US') + ' m² GFA (est.)' : '<b>Terminal A, X-shaped, 4 piers</b><br>roof span 319 m · max height 52 m · 65 stands · model GFA ' + Math.round(A.GFA_MODEL).toLocaleString('en-US') + ' m²'; };
     const paxInfo = () => { if (PS.driven) return '<br><span style="color:#22d3ee">LIVE</span> ' + drvList.length + ' tracked passengers in the terminal';  const st = sim.stats; return '<br><span style="color:#22d3ee">LIVE</span> ' + st.total + ' passengers · ' + st.dep + ' departing · ' + st.arr + ' arriving · security queue ' + st.secQ + ' (~' + st.secWaitMin + ' min)'; };
-    const lvInfo = () => baseInfo() + (PS.on ? paxInfo() : '');
+    const flInfo = () => '<br><span style="color:#fbbf24">✈</span> ' + FL.ac.filter((a) => a.kind === 'arr').length + ' arriving · ' + FL.ac.filter((a) => a.kind === 'dep').length + ' departing · ' + FL.arrivals + ' landed · ' + FL.departures + ' took off';
+    const lvInfo = () => baseInfo() + (PS.on ? paxInfo() : '') + (FL.on ? flInfo() : '');
     const summary = lvInfo;
     let infoAt = 0;
     function updateInfo() { const now = performance.now(); if (now - infoAt < 500) return; infoAt = now; const inf = el.querySelector('.ta3d-info'); if (inf && !inf.dataset.hover) inf.innerHTML = lvInfo(); }
@@ -220,12 +310,13 @@
       if (dead) return; if (!el.isConnected) { api.dispose(); return; }
       raf = requestAnimationFrame(loop); const dt = Math.min(0.1, (t - last) / 1000); last = t;
       if (C.auto) C.yaw += dt * 0.12;
+      if (FL.on) flightsStep(dt);
       if (PS.driven) glide(dt); else if (PS.on) { sim.speed = PS.speed; sim.step(dt); }
       place(); drawPeople(t / 1000); updateInfo(); r.render(scene, cam);
     })(last);
     const api = {
       scene, camera: cam, state: S, view: C, sim, people: PS,
-      setLevel(id) { S.level = id; apply(); }, setExplode(v) { S.explode = !!v; apply(); }, setRoof(v) { S.roof = !!v; apply(); }, setSurroundings(v) { S.sur = !!v; apply(); }, setPeople(v) { PS.on = !!v; apply(); },
+      setLevel(id) { S.level = id; apply(); }, setExplode(v) { S.explode = !!v; apply(); }, setRoof(v) { S.roof = !!v; apply(); }, setSurroundings(v) { S.sur = !!v; apply(); }, setPeople(v) { PS.on = !!v; apply(); }, setFlights(v) { FL.on = !!v; flightG.visible = FL.on; apply(); }, flights: FL, flightsStep,
       setCrowd(items) {
         const seen = new Set(), cap = MAXP, step = Math.max(1, Math.ceil(items.length / cap));
         items.forEach((it, i) => {
@@ -240,6 +331,7 @@
       dispose() { dead = true; cancelAnimationFrame(raf); ro.disconnect(); r.dispose(); },
     };
     apply();
+    root.__ta3d = api;
     return api;
   }
 
