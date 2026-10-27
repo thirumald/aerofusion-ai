@@ -14,7 +14,7 @@ cd mobility && python3 -m http.server 8000      # open http://localhost:8000
 ```
 
 Also works from `file://` (the SQL engine's WASM is embedded as base64). The parent Pages workflow serves it at `/mobility/`.
-The live basemap (CARTO/OpenStreetMap) needs internet; offline, the app falls back to the bundled emirate outlines.
+The basemap uses **Geoapify** tiles (`osm-bright` / `dark-matter`) when a key is available — it reads `AF_CONFIG.geoapifyKey` from the parent `js/config.js` (filled at deploy from the `GEOAPIFY_KEY` secret), or a key saved in your browser (`safar.geoapifyKey` / `af.geoapifyKey`). Without a key it uses CARTO tiles; offline, it falls back to the bundled emirate outlines.
 
 ## Pages (sidebar)
 
