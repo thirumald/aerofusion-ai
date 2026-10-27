@@ -28,6 +28,7 @@ Serve over http (not `file://`) so video, analytics and the map can load. It dep
 | Other camera video | **Real footage** (CC BY 4.0, see `footage/ATTRIBUTION.md`), or your own webcam, file or stream URL |
 | People, bag and vehicle detection | **Real**: COCO-SSD runs in your browser on the video |
 | Tokens, bag-to-owner links, unattended and dwell timers | **Real** logic (`js/live-core.js`, unit tested) |
+| Passenger journey tracking | **Real** logic (`js/journey-core.js`, unit tested) over a simulated day of departures: flights, journeys, cameras and measurements are sample data |
 | Map | **Real** map tiles (Geoapify or OpenStreetMap) and **live aircraft** from the OpenSky Network |
 | Zones, camera positions on the map | Illustrative placement around the AUH reference point |
 | Incidents, alerts, KPIs, dashboards, twin metrics | Sample data |
@@ -43,6 +44,7 @@ Serve over http (not `file://`) so video, analytics and the map can load. It dep
 | | Platform blueprint | The integrated security platform as a page: architecture, journey graph with consent toggles, 81 searchable problems and solutions marked demo or design only, fusion use cases, phased roadmap and KPIs |
 | | Command center | KPIs, risk map, active alerts, camera wall |
 | Domains | Baggage, Passenger flow, Landside traffic, Predictive maintenance | Domain dashboards with charts, heatmap, custody chain and work orders |
+| | Passenger journey | Departures journey tracking from check-in to onboard, verified by STJ (see below) |
 | Detection | Live cameras, Video sources | Real video per camera with live analytics; choose footage, webcam, file or stream |
 | | Checkpoint | A real labelled screening video: IDs, bag X-ray results, body scanner alarms, secondary screening, with panels and a persistent-ID timeline that follow the video |
 | | Sensor fusion | Interactive channel fusion plus a per-person fusion built from the same labelled video |
@@ -51,6 +53,27 @@ Serve over http (not `file://`) so video, analytics and the map can load. It dep
 
 The sidebar has a profile card at the bottom (Thirumal Dharmalingam) with a theme switch. Light and dark themes
 follow your system setting and are remembered.
+
+## Passenger journey tracking
+
+`#/journey` is the Business Network frontend from the journey-tracking PoC Statement of Work. A simulated afternoon
+of 12 departures (about 2,600 journeys) runs on its own clock, which you can pause, speed up or reset.
+
+* **Zones Z1 to Z7**: check-in rows A, B, C, D, E, J; Economy and Business immigration; Economy Security Entrance;
+  Piers A, B, C, D, D43; Gates E and F; remote stands; onboard.
+* **IDs**: `JID-YYMMDD-{row+counter}-{sequence}` per person and `GRP-…` per counter transaction. No images, names,
+  passport, nationality or PNR data appear anywhere.
+* **STJ verification**: journeys move from Unverified to Confirmed passenger, Unmatched passenger (class unknown) or
+  Non-travelling visitor (purged 60 minutes after enrolment). Flight and class are attached only after a match.
+  Switch between the standard policy (R1 at enrolment, R2 after security, R3 gate fallback) and **Mode PS**
+  (R2 onwards only) to compare request volume.
+* **Views**: live journey map (zone counts and dwell, process performance against targets, STJ verification, pier
+  occupancy, zone-event feed); flights with a last-passenger locator; Journey ID search with zone record, STJ request
+  log and detection log; alerts console (late passenger, missed-flight risk, queue threshold, crowding, channel
+  compliance, track gap); acceptance criteria AC-01 to AC-08 and metrics M-19 to M-24.
+
+Each view has its own link: `#/journey/map`, `#/journey/flights`, `#/journey/search`, `#/journey/alerts`,
+`#/journey/acceptance`. Wait targets and pier capacities are placeholders until confirmed at M2.
 
 ## Video sources
 
@@ -80,7 +103,8 @@ js/data.js            zones, cameras, alerts, incidents, tracks, fusion cases
 js/ui.js              router, charts, KPI cards, toasts, theme, live alert generator
 js/live-core.js       tracker: tokens, bag-to-owner association, unattended and dwell logic (Node-testable)
 js/live.js            video sources, detection loop, source picker, Video sources page
-js/pages-*.js         pages (ops, intel, checkpoint, geo, twin, domain, asset, map, blueprint)
+js/journey-core.js    passenger journey simulation, STJ policy, alerts and metrics (Node-testable)
+js/pages-*.js         pages (ops, intel, checkpoint, geo, twin, domain, journey, asset, map, blueprint)
 js/blueprint-data.js  the platform blueprint as data
 footage/              real camera clips plus ATTRIBUTION.md
 samples/              synthetic rendered clips with box annotations
@@ -94,8 +118,10 @@ tools/make-samples.js renders the synthetic clips (Playwright and ffmpeg)
   events, and custody change.
 * `node tests/cp.test.js` checks the model built from the labelled checkpoint video: owner links, X-ray flags, fusion
   decisions and identity timing.
+* `node tests/journey.test.js` checks the journey model: ID formats, single-use STJ references, Mode PS, visitor
+  purge, late-token resubmission, alerts and acceptance thresholds.
 
-The Pages workflow runs both before it deploys.
+The Pages workflow runs all of them before it deploys.
 
 ## Credits
 
