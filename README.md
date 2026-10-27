@@ -75,6 +75,16 @@ of 12 departures (about 2,600 journeys) runs on its own clock, which you can pau
 Each view has its own link: `#/journey/map`, `#/journey/flights`, `#/journey/search`, `#/journey/alerts`,
 `#/journey/acceptance`. Wait targets and pier capacities are placeholders until confirmed at M2.
 
+## SAFAR: mobility intelligence (new module)
+
+`mobility/` is a self-contained sister app for **ground transport in Abu Dhabi and the UAE**, built in the same design
+language (tokens, light/dark theme with the shared `af.theme` setting, grouped sidebar, KPI tiles). Open it at
+`/mobility/` (or `mobility/index.html`). It runs on **synthetic data** and covers the five transit diagnostics, EV fleet
+and charging, emissions, event surge planning (F1, concerts, Ramadan), safety and incidents, a what-if planner, heat and
+dust resilience, accessibility and equity, an Arabic/English Copilot (real SQL on an in-browser SQLite), seven camera
+feeds, a use-case hub, Stage 0 data discovery with sizing, and governance (RBAC, PII masking, hash-chained audit log).
+See [`mobility/README.md`](mobility/README.md).
+
 ## Video sources
 
 Each camera (`CAM-01` to `CAM-06`) plays `footage/CAM-0X.mp4` / `.webm` by default. On **Video sources** you can switch a
@@ -110,6 +120,7 @@ footage/              real camera clips plus ATTRIBUTION.md
 samples/              synthetic rendered clips with box annotations
 vendor/               Leaflet, TensorFlow.js, COCO-SSD, hls.js (see vendor/README.md)
 tools/make-samples.js renders the synthetic clips (Playwright and ffmpeg)
+mobility/             SAFAR ground-transport module (own index.html, js, data, videos)
 ```
 
 ## Tests
